@@ -6,7 +6,8 @@ const packages = lock.packages || {};
 const roots = [
   "dotenv",
   "@google/genai",
-  "@vercel/blob"
+  "@vercel/blob",
+  "jsonrepair"
 ];
 
 function packagePath(name) {

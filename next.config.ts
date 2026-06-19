@@ -47,6 +47,7 @@ const pipelineRuntimeFiles = [
   "./node_modules/isexe/**/*",
   "./node_modules/jose/**/*",
   "./node_modules/json-bigint/**/*",
+  "./node_modules/jsonrepair/**/*",
   "./node_modules/jwa/**/*",
   "./node_modules/jws/**/*",
   "./node_modules/long/**/*",
