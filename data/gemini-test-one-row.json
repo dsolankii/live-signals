@@ -1,0 +1,40 @@
+{
+  "aiProvider": "gemini",
+  "modelUsed": "gemini-2.5-flash-lite",
+  "input": {
+    "id": "remoteok_1133542",
+    "rawName": "VITA CV",
+    "website": "https://remoteOK.com/remote-jobs/remote-junior-admin-assistant-vita-cv-1133542",
+    "sourceType": "careers_page",
+    "sourceName": "Remote OK",
+    "sourceUrl": "https://remoteOK.com/remote-jobs/remote-junior-admin-assistant-vita-cv-1133542",
+    "description": "Junior Admin Assistant. Tags: writer, strategy, customer support, marketing, seo, exec, content writing, ops, stats, sys admin, engineer, saas, teaching, technical, dev, quality assurance, junior, golang, digital nomad, coordinator, admin, medical, virtual assistant, part time",
+    "homepageText": "VITA CV is hiring for Junior Admin Assistant. Tags: writer, strategy, customer support, marketing, seo, exec, content writing, ops, stats, sys admin, engineer, saas, teaching, technical, dev, quality assurance, junior, golang, digital nomad, coordinator, admin, medical, virtual assistant, part time",
+    "careersText": "Junior Admin Assistant. Posted 6:19:49 PM. Junior Admin Assistant â Part-Time RemoteLocation: UK Wide (Remote / Home Based)Salary: Â£10 â Â£13â¦See this and similar jobs on LinkedIn. Please mention the word **SPEEDILY** and tag RMjQwMTo0OTAwOjg4MWI6ODAzODoxMzlhOjZmOWI6NTA4MjplMjU5 when applying to show you read the job post completely (#RMjQwMTo0OTAwOjg4MWI6ODAzODoxMzlhOjZmOWI6NTA4MjplMjU5). This is a beta feature to avoid spam applicants. Companies can search these words to find applicants that read this and see they're human.",
+    "lastActivityDate": "2026-06-17",
+    "country": "UK Wide, ",
+    "estimatedSize": "",
+    "stageHint": "real_public_job_posting",
+    "agentConfidence": 0.85,
+    "expectedCategory": "real_source_unclassified",
+    "expectedTrashReason": ""
+  },
+  "ai": {
+    "companyName": "VITA CV",
+    "cleanCompanyName": "VITA CV",
+    "companyType": "unknown",
+    "isPotentialCustomer": true,
+    "isBadLead": false,
+    "badLeadReason": "",
+    "icpFit": "low",
+    "buyingStage": "low_intent",
+    "signals": [
+      "hiring_admin"
+    ],
+    "intentScore": 25,
+    "scoreReasoning": "The company is hiring for a junior admin assistant role, which is a weak signal for needing outbound sales support services. The company type is also unclear.",
+    "whyNow": "The company is actively hiring, indicating potential growth or operational needs that might eventually require support services.",
+    "recommendedBuyer": "Hiring Manager, Operations Manager",
+    "outreachAngle": "Focus on how outbound sales support can help them scale their operations and free up internal resources to focus on core business activities, rather than just administrative tasks."
+  }
+}

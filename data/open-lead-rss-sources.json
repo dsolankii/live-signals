@@ -1,0 +1,17 @@
+[
+  {
+    "name": "We Work Remotely Sales",
+    "url": "https://weworkremotely.com/categories/remote-sales-and-marketing-jobs.rss",
+    "type": "job_board"
+  },
+  {
+    "name": "We Work Remotely Support",
+    "url": "https://weworkremotely.com/categories/remote-customer-support-jobs.rss",
+    "type": "job_board"
+  },
+  {
+    "name": "We Work Remotely Programming",
+    "url": "https://weworkremotely.com/categories/remote-programming-jobs.rss",
+    "type": "job_board"
+  }
+]

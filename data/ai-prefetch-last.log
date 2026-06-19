@@ -1,0 +1,135 @@
+
+
+--- Prefetch started 2026-06-18T22:38:28.445Z ---
+Light pre-clean complete
+------------------------
+Raw rows: 938
+Accepted for AI/company scoring: 917
+Hard rejected as obvious garbage: 21
+Wrote /home/dsolankii/lead-signal-poc/data/real-source-mentions-preclean.json
+Wrote /home/dsolankii/lead-signal-poc/data/real-source-mentions-rejected-preclean.json
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+Company-level AI enrichment v2
+--------------------------------
+Provider: gemini
+Model: gemini-2.5-flash-lite
+Pre-clean rows: 917
+Unique companies: 597
+Already AI-enriched companies: 50
+Remaining companies: 547
+Batch size this run: 50
+
+
+--- Prefetch started 2026-06-18T22:46:13.060Z ---
+Light pre-clean complete
+------------------------
+Raw rows: 938
+Accepted for AI/company scoring: 917
+Hard rejected as obvious garbage: 21
+Wrote /home/dsolankii/lead-signal-poc/data/real-source-mentions-preclean.json
+Wrote /home/dsolankii/lead-signal-poc/data/real-source-mentions-rejected-preclean.json
+◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+Company-level AI enrichment v2
+--------------------------------
+Provider: gemini
+Model: gemini-2.5-flash-lite
+Pre-clean rows: 917
+Unique companies: 597
+Already AI-enriched companies: 100
+Remaining companies: 497
+Batch size this run: 50
+AI request for 50 companies...
+AI request succeeded for 50 companies.
+B.i.Team Gesellschaft für Softwareberatung mbH → 45 | research_more | 40% confidence | medium | mentions: 1
+Krückeberg Servicegruppe → 15 | not_relevant | 20% confidence | low | mentions: 1
+Rettig & Partner Investment Consulting → 65 | nurture | 60% confidence | medium | mentions: 1
+EGOR Managementberatung GmbH → 90 | hot_lead | 85% confidence | high | mentions: 1
+RM Executive Search → 5 | trash | 10% confidence | not_fit | mentions: 1
+Lovebetter Gesellschaft für männliche Sexualität mbH → 80 | warm_lead | 75% confidence | medium | mentions: 2
+K-tronik GmbH → 92 | hot_lead | 90% confidence | high | mentions: 4
+mara Personalservice GmbH → 5 | trash | 10% confidence | not_fit | mentions: 1
+Persohap GmbH → 88 | hot_lead | 80% confidence | high | mentions: 1
+bits&birds GmbH → 90 | hot_lead | 85% confidence | high | mentions: 1
+Riffbird GmbH → 85 | hot_lead | 80% confidence | high | mentions: 1
+BRÜGGEN ENGINEERING GmbH → 55 | nurture | 50% confidence | high | mentions: 1
+KERN & SOHN GmbH → 40 | research_more | 40% confidence | medium | mentions: 1
+Biomatch GmbH → 88 | hot_lead | 80% confidence | high | mentions: 1
+softgate → 88 | hot_lead | 80% confidence | high | mentions: 1
+ECENT GmbH → 60 | nurture | 55% confidence | high | mentions: 1
+Dellner Bubenzer → 45 | research_more | 40% confidence | medium | mentions: 1
+crossvertise GmbH → 85 | hot_lead | 75% confidence | high | mentions: 1
+Ingenieurbüro Verena Berndt → 25 | not_relevant | 20% confidence | medium | mentions: 1
+Zattoo → 75 | warm_lead | 70% confidence | medium | mentions: 1
+Peter Stenmans → 90 | hot_lead | 85% confidence | high | mentions: 1
+KODRA GmbH & Co. KG → 90 | hot_lead | 85% confidence | high | mentions: 1
+ipi Institute für Produkt-Markt-Forschung GmbH → 88 | hot_lead | 80% confidence | high | mentions: 1
+SumUp → 88 | hot_lead | 80% confidence | high | mentions: 1
+Lang Consulting GmbH → 88 | hot_lead | 80% confidence | high | mentions: 1
+AYLASHES → 70 | warm_lead | 65% confidence | medium | mentions: 1
+Taxtalente.de → 95 | hot_lead | 95% confidence | high | mentions: 8
+Vexcash AG → 88 | hot_lead | 80% confidence | high | mentions: 1
+Blickfeld GmbH → 85 | hot_lead | 75% confidence | high | mentions: 1
+Cyber Insight GmbH → 90 | hot_lead | 85% confidence | high | mentions: 1
+TecTake GmbH → 80 | warm_lead | 75% confidence | medium | mentions: 1
+Visual Statements GmbH → 85 | hot_lead | 75% confidence | high | mentions: 1
+hoch²immobilien GmbH → 75 | warm_lead | 70% confidence | medium | mentions: 1
+everydays → 90 | hot_lead | 85% confidence | high | mentions: 1
+Team Passerelle → 92 | hot_lead | 90% confidence | high | mentions: 2
+DP Plan Planungsbüro für technische Gebäudeausrüstung GmbH → 90 | hot_lead | 85% confidence | high | mentions: 2
+TEQWERK GmbH → 88 | hot_lead | 80% confidence | high | mentions: 1
+ITconfig/all GmbH → 85 | hot_lead | 75% confidence | high | mentions: 1
+PRIME HR Agentur → 15 | trash | 20% confidence | not_fit | mentions: 3
+Fischer & Partner Gesellschaft für Personal mbH → 15 | trash | 20% confidence | not_fit | mentions: 1
+Jobbusters GmbH → 15 | trash | 20% confidence | not_fit | mentions: 3
+Heidi Systems GmbH → 85 | hot_lead | 75% confidence | high | mentions: 1
+circular.fashion → 88 | hot_lead | 80% confidence | high | mentions: 1
+hey contact heroes GmbH → 75 | warm_lead | 70% confidence | medium | mentions: 1
+A.Team → 92 | hot_lead | 90% confidence | high | mentions: 2
+Quinncia Inc → 85 | hot_lead | 75% confidence | high | mentions: 1
+Mitre Media → 88 | hot_lead | 80% confidence | high | mentions: 1
+Expion Health → 88 | hot_lead | 80% confidence | high | mentions: 1
+The Obesity Society → 15 | not_relevant | 20% confidence | low | mentions: 1
+Lemon.io → 90 | hot_lead | 85% confidence | high | mentions: 2
+
+Company-level AI enrichment complete
+------------------------------------
+New companies enriched: 50
+Total AI-enriched companies saved: 150
+Wrote /home/dsolankii/lead-signal-poc/data/ai-enriched-company-leads.json
+Wrote /home/dsolankii/lead-signal-poc/data/ai-enriched-company-leads.csv
+AI-only dashboard dataset built
+-------------------------------
+Pre-clean rows: 917
+Unique accepted companies: 597
+Visible Gemini-reviewed companies: 100
+Prefetched Gemini-reviewed companies: 150
+Pending Gemini review companies: 447
+Hard rejected companies: 13
+Final dashboard company rows: 113
+Wrote /home/dsolankii/lead-signal-poc/data/company-dashboard-leads.json
+Wrote /home/dsolankii/lead-signal-poc/data/company-dashboard-leads.csv
+Updated /home/dsolankii/lead-signal-poc/data/raw-company-mentions.json
+
+
+--- Prefetch started 2026-06-18T22:48:51.919Z ---
+Light pre-clean complete
+------------------------
+Raw rows: 938
+Accepted for AI/company scoring: 917
+Hard rejected as obvious garbage: 21
+Wrote /home/dsolankii/lead-signal-poc/data/real-source-mentions-preclean.json
+Wrote /home/dsolankii/lead-signal-poc/data/real-source-mentions-rejected-preclean.json
+◇ injected env (0) from .env.local // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+Company-level AI enrichment v2
+--------------------------------
+Provider: gemini
+Model: gemini-2.5-flash-lite
+Pre-clean rows: 917
+Unique companies: 597
+Already AI-enriched companies: 150
+Remaining companies: 447
+Batch size this run: 50
+AI request for 50 companies...

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "Web Summit Startups",
+    "url": "https://websummit.com/startups/",
+    "type": "saas_conference"
+  },
+  {
+    "name": "Web Summit Partners",
+    "url": "https://websummit.com/partners/",
+    "type": "saas_conference"
+  },
+  {
+    "name": "SaaStr Annual",
+    "url": "https://www.saastrannual.com/",
+    "type": "saas_conference"
+  },
+  {
+    "name": "SaaStr Events",
+    "url": "https://www.saastr.com/events/",
+    "type": "saas_conference"
+  },
+  {
+    "name": "SaaStock",
+    "url": "https://www.saastock.com/",
+    "type": "saas_conference"
+  },
+  {
+    "name": "TechCrunch Disrupt",
+    "url": "https://techcrunch.com/events/",
+    "type": "startup_conference"
+  },
+  {
+    "name": "Dublin Tech Summit",
+    "url": "https://dublintechsummit.tech/",
+    "type": "tech_conference"
+  }
+]
