@@ -31,6 +31,7 @@ const blobFiles = [
   "company-dashboard-leads.csv",
   "raw-company-mentions.json",
   "leadgrid-visible-state.json",
+  "pipeline-status.json",
   "saas-conference-source-pages.json",
   "open-lead-rss-sources.json"
 ];
@@ -128,7 +129,9 @@ function runNodeScript(
   timeoutMs = 20 * 60 * 1000
 ): Promise<RunLocalScriptResult> {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [scriptPath], {
+    const [file, ...args] = scriptPath.split(" ").filter(Boolean);
+
+    const child = spawn(process.execPath, [file, ...args], {
       cwd: process.cwd(),
       env: {
         ...process.env,

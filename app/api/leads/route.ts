@@ -20,7 +20,11 @@ export async function GET() {
     await pullPipelineDataFromBlob();
   }
 
-  const leads = await readJsonFile<any[]>("company-dashboard-leads.json", []);
+  const run = await readJsonFile<any>("current-live-run.json", null);
+  const allLeads = await readJsonFile<any[]>("company-dashboard-leads.json", []);
+  const leads = run?.runId
+    ? allLeads.filter((lead) => !lead.runId || lead.runId === run.runId)
+    : allLeads;
   const visibleState = await readJsonFile<any>("leadgrid-visible-state.json", {
     currentPage: 0,
     maxUnlockedPage: 0,
