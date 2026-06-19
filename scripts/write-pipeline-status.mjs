@@ -1,12 +1,8 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { put } from "@vercel/blob";
 import { DATA_DIR } from "./data-dir.mjs";
 
 const mode = process.argv[2] || "snapshot";
-
-const blobPrefix = process.env.LEADGRID_BLOB_PREFIX || "leadgrid/data";
-const isVercel = Boolean(process.env.VERCEL);
 
 async function readJson(file, fallback) {
   try {
@@ -24,6 +20,15 @@ function uniqueCount(rows, key = "companyName") {
   ).size;
 }
 
+function sourceCount(rows) {
+  const values = rows
+    .map((row) => row?.sourceName || row?.source || row?.sourceType || row?.url)
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean);
+
+  return new Set(values).size;
+}
+
 await mkdir(DATA_DIR, { recursive: true });
 
 const run = await readJson("current-live-run.json", null);
@@ -32,25 +37,6 @@ const preclean = await readJson("real-source-mentions-preclean.json", []);
 const rejected = await readJson("real-source-mentions-rejected-preclean.json", []);
 const reviewed = await readJson("ai-enriched-company-leads.json", []);
 const leads = await readJson("company-dashboard-leads.json", []);
-
-const sourceStats = {
-  raw: raw.length,
-  sources: uniqueCount(raw, "sourceName") || uniqueCount(raw, "source") || 0,
-  companies: uniqueCount(raw)
-};
-
-const precleanStats = {
-  accepted: preclean.length,
-  rejected: rejected.length,
-  ready: uniqueCount(preclean)
-};
-
-const qualificationStats = {
-  reviewed: reviewed.length,
-  queue: leads.length,
-  reviewedVisible: leads.filter((lead) => lead.reviewStatus === "reviewed").length,
-  pendingVisible: leads.filter((lead) => lead.reviewStatus === "pending").length
-};
 
 const statusMap = {
   start: {
@@ -90,8 +76,8 @@ const statusMap = {
   },
   snapshot: {
     activeStep: "snapshot",
-    status: "idle",
-    label: "Live snapshot"
+    status: "live",
+    label: "Live pipeline data loaded"
   }
 };
 
@@ -105,19 +91,32 @@ const payload = {
   mode,
   ...state,
   cards: {
-    raw: sourceStats.raw,
-    sources: sourceStats.sources,
-    companies: sourceStats.companies,
+    raw: raw.length,
+    sources: sourceCount(raw),
+    companies: uniqueCount(raw),
     noise: rejected.length,
-    accepted: precleanStats.accepted,
-    rejected: precleanStats.rejected,
-    ready: precleanStats.ready,
-    reviewed: qualificationStats.reviewed,
-    queue: qualificationStats.queue
+    accepted: preclean.length,
+    rejected: rejected.length,
+    ready: uniqueCount(preclean),
+    reviewed: reviewed.length,
+    queue: leads.length
   },
-  sourceStats,
-  precleanStats,
-  qualificationStats,
+  sourceStats: {
+    raw: raw.length,
+    sources: sourceCount(raw),
+    companies: uniqueCount(raw)
+  },
+  precleanStats: {
+    accepted: preclean.length,
+    rejected: rejected.length,
+    ready: uniqueCount(preclean)
+  },
+  qualificationStats: {
+    reviewed: reviewed.length,
+    queue: leads.length,
+    reviewedVisible: leads.filter((lead) => lead.reviewStatus === "reviewed").length,
+    pendingVisible: leads.filter((lead) => lead.reviewStatus === "pending").length
+  },
   sampleLeads: leads.slice(0, 5).map((lead) => ({
     companyName: lead.companyName,
     runId: lead.runId,
@@ -126,15 +125,10 @@ const payload = {
   }))
 };
 
-const filePath = path.join(DATA_DIR, "pipeline-status.json");
-await writeFile(filePath, JSON.stringify(payload, null, 2));
+await writeFile(
+  path.join(DATA_DIR, "pipeline-status.json"),
+  JSON.stringify(payload, null, 2)
+);
 
-if (isVercel && process.env.BLOB_READ_WRITE_TOKEN) {
-  await put(`${blobPrefix}/pipeline-status.json`, JSON.stringify(payload, null, 2), {
-    access: "private",
-    allowOverwrite: true
-  });
-}
-
-console.log(`Pipeline status updated: ${mode}`);
+console.log(`Pipeline status updated locally: ${mode}`);
 console.log(JSON.stringify(payload.cards, null, 2));
