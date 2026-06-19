@@ -66,14 +66,38 @@ export async function GET() {
     computedCards.reviewed > 0 ||
     computedCards.queue > 0;
 
+  let activeStep = "idle";
+  let status = "idle";
+  let label = "No live run yet";
+
+  if (computedCards.queue > 0 || computedCards.reviewed > 0) {
+    activeStep = "qualify";
+    status = "complete";
+    label = "Qualification complete";
+  } else if (computedCards.accepted > 0 || computedCards.ready > 0 || computedCards.rejected > 0) {
+    activeStep = "preclean";
+    status = "complete";
+    label = "Pre-clean complete";
+  } else if (computedCards.raw > 0 || computedCards.companies > 0) {
+    activeStep = "signal_scan";
+    status = "complete";
+    label = "Signal scan complete";
+  }
+
+  if (savedStatus?.status === "running") {
+    activeStep = savedStatus.activeStep || activeStep;
+    status = "running";
+    label = savedStatus.label || label;
+  }
+
   const payload = {
     ok: true,
     runId: run?.runId || savedStatus?.runId || null,
     runStartedAt: run?.startedAt || savedStatus?.runStartedAt || null,
     updatedAt: new Date().toISOString(),
-    activeStep: savedStatus?.activeStep || (hasLiveData ? "snapshot" : "idle"),
-    status: savedStatus?.status || (hasLiveData ? "live" : "idle"),
-    label: savedStatus?.label || (hasLiveData ? "Live pipeline data loaded" : "No live run yet"),
+    activeStep,
+    status,
+    label,
     cards: computedCards,
     sourceStats: {
       raw: raw.length,
