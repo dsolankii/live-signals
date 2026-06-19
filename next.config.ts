@@ -5,12 +5,15 @@ const pipelineRuntimeFiles = [
   "./data/**/*",
   "./package.json",
 
+  // Runtime deps used by child Node scripts on Vercel.
   "./node_modules/dotenv/**/*",
-
   "./node_modules/@vercel/blob/**/*",
   "./node_modules/is-node-process/**/*",
+  "./node_modules/is-buffer/**/*",
+  "./node_modules/@google/genai/**/*",
 
-  "./node_modules/@google/genai/**/*"
+  // Safety net for SDK transitive deps used by spawned scripts.
+  "./node_modules/**/*"
 ];
 
 const nextConfig: NextConfig = {
