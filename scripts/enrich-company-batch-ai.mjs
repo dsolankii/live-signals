@@ -3,6 +3,7 @@ import path from "node:path";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
 import { jsonrepair } from "jsonrepair";
+import { DATA_DIR, dataPath } from "./data-dir.mjs";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();

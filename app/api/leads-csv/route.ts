@@ -1,9 +1,15 @@
+
+const LEADGRID_DATA_DIR =
+  process.env.LEADGRID_DATA_DIR ||
+  (process.env.VERCEL ? "/tmp/leadgrid-data" : path.join(process.cwd(), "data"));
+
+import { runLocalScript } from "@/lib/run-local-script";
 import { NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
 
-const STATE_PATH = path.join(process.cwd(), "data", "leadgrid-visible-state.json");
-const LEADS_PATH = path.join(process.cwd(), "data", "company-dashboard-leads.json");
+const STATE_PATH = path.join(LEADGRID_DATA_DIR, "leadgrid-visible-state.json");
+const LEADS_PATH = path.join(LEADGRID_DATA_DIR, "company-dashboard-leads.json");
 
 function escapeCsv(value: unknown) {
   const stringValue = String(value ?? "");
@@ -49,6 +55,7 @@ async function readState() {
 }
 
 export async function GET() {
+  if (process.env.VERCEL) await runLocalScript("scripts/blob-pull.mjs", 60 * 1000);
   try {
     const raw = await readFile(LEADS_PATH, "utf8");
     const allLeads = JSON.parse(raw);

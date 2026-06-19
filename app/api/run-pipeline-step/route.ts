@@ -3,6 +3,11 @@ import { readFile, writeFile, stat } from "fs/promises";
 import path from "path";
 import { runLocalScript } from "@/lib/run-local-script";
 
+
+const LEADGRID_DATA_DIR =
+  process.env.LEADGRID_DATA_DIR ||
+  (process.env.VERCEL ? "/tmp/leadgrid-data" : path.join(process.cwd(), "data"));
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -24,7 +29,7 @@ const stepScripts: Record<StepName, string[]> = {
   ],
 };
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = LEADGRID_DATA_DIR;
 
 function getCompanyName(row: Record<string, any>) {
   return String(row.companyName || row.company || row.name || "").trim();

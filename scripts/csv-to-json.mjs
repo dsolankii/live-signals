@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import Papa from "papaparse";
+import { DATA_DIR, dataPath } from "./data-dir.mjs";
 
 const inputPath = "data/raw-company-mentions.csv";
 const outputPath = "data/raw-company-mentions.json";

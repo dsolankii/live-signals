@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { DATA_DIR, dataPath } from "./data-dir.mjs";
 
 const PRECLEAN_JSON = "data/real-source-mentions-preclean.json";
 const REJECTED_JSON = "data/real-source-mentions-rejected-preclean.json";

@@ -1,10 +1,11 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { DATA_DIR, dataPath } from "./data-dir.mjs";
 
 const ROOT = process.cwd();
-const CONFIG_PATH = path.join(ROOT, "data", "saas-conference-source-pages.json");
-const OUT_JSON = path.join(ROOT, "data", "real-source-mentions.json");
-const OUT_CSV = path.join(ROOT, "data", "real-source-mentions.csv");
+const CONFIG_PATH = dataPath("saas-conference-source-pages.json");
+const OUT_JSON = dataPath("real-source-mentions.json");
+const OUT_CSV = dataPath("real-source-mentions.csv");
 
 const OBVIOUS_BAD_EXACT = new Set([
   "home",
@@ -186,7 +187,7 @@ async function fetchHtml(url) {
 }
 
 async function main() {
-  await mkdir(path.join(ROOT, "data"), { recursive: true });
+  await mkdir(DATA_DIR, { recursive: true });
 
   const sources = await readJsonArray(CONFIG_PATH);
   const existingRows = await readJsonArray(OUT_JSON);

@@ -66,7 +66,13 @@ export function runSourceExtractionAgent(): {
   sourceConfigs: SourceAgentConfig[];
   extractionRuns: AgentExtractionRun[];
 } {
-  const rawMentions = rawData as RawCompanyMention[];
+  const rawMentions = (
+    Array.isArray(rawData)
+      ? rawData.flatMap((item: any) =>
+          Array.isArray(item?.mentions) ? item.mentions : [item]
+        )
+      : []
+  ) as unknown as RawCompanyMention[];
 
   const extractionRuns = sourceConfigs.map((source) => {
     const mentionsForSource = rawMentions.filter(

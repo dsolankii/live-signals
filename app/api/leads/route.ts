@@ -1,12 +1,18 @@
+import { runLocalScript } from "@/lib/run-local-script";
 import { NextResponse } from "next/server";
 import { readFile, writeFile, mkdir, stat } from "fs/promises";
 import path from "path";
 
+
+const LEADGRID_DATA_DIR =
+  process.env.LEADGRID_DATA_DIR ||
+  (process.env.VERCEL ? "/tmp/leadgrid-data" : path.join(process.cwd(), "data"));
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const STATE_PATH = path.join(process.cwd(), "data", "leadgrid-visible-state.json");
-const LEADS_PATH = path.join(process.cwd(), "data", "company-dashboard-leads.json");
+const STATE_PATH = path.join(LEADGRID_DATA_DIR, "leadgrid-visible-state.json");
+const LEADS_PATH = path.join(LEADGRID_DATA_DIR, "company-dashboard-leads.json");
 
 function getScore(lead: Record<string, any>) {
   const raw =
@@ -64,6 +70,7 @@ async function readState() {
 }
 
 export async function GET() {
+  if (process.env.VERCEL) await runLocalScript("scripts/blob-pull.mjs", 60 * 1000);
   try {
     const raw = await readFile(LEADS_PATH, "utf8");
     const parsed = JSON.parse(raw);

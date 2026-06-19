@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import dotenv from "dotenv";
+import { DATA_DIR, dataPath } from "./data-dir.mjs";
 
 dotenv.config({ path: ".env.local" });
 

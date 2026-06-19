@@ -1,9 +1,10 @@
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
+import { DATA_DIR, dataPath } from "./data-dir.mjs";
 
 const ROOT = process.cwd();
-const IN_JSON = path.join(ROOT, "data", "real-source-mentions.json");
-const OUT_CSV = path.join(ROOT, "data", "real-source-mentions.csv");
+const IN_JSON = dataPath("real-source-mentions.json");
+const OUT_CSV = dataPath("real-source-mentions.csv");
 
 const BAD_EXACT = new Set([
   "home",

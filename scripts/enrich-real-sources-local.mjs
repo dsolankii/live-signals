@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { DATA_DIR, dataPath } from "./data-dir.mjs";
 
 const INPUT_JSON = "data/real-source-mentions-preclean.json";
 const OUTPUT_JSON = "data/ai-enriched-source-mentions.json";
