@@ -1,9 +1,14 @@
 import { spawnSync } from "child_process";
 
-function run(script, args = []) {
-  console.log(`\nRunning ${script} ${args.join(" ")}`.trim());
+const scripts = [
+  "scripts/enrich-company-batch-ai.mjs",
+  "scripts/build-company-dashboard-dataset.mjs"
+];
 
-  const result = spawnSync(process.execPath, [script, ...args], {
+for (const script of scripts) {
+  console.log(`\nRunning ${script}`);
+
+  const result = spawnSync(process.execPath, [script], {
     cwd: process.cwd(),
     env: process.env,
     stdio: "inherit"
@@ -15,10 +20,4 @@ function run(script, args = []) {
   }
 }
 
-run("scripts/write-pipeline-status.mjs", ["qualify"]);
-run("scripts/enrich-company-batch-ai.mjs");
-run("scripts/write-pipeline-status.mjs", ["qualify"]);
-run("scripts/build-company-dashboard-dataset.mjs");
-run("scripts/write-pipeline-status.mjs", ["qualify_done"]);
-
-console.log("\nQualification wrapper complete");
+console.log("\nQualification complete");

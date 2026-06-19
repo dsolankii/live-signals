@@ -14,21 +14,33 @@ async function readJson<T>(fileName: string, fallback: T): Promise<T> {
   }
 }
 
-function uniqueCount(rows: any[], key = "companyName") {
+function companyNameOf(row: any) {
+  return String(
+    row?.companyName ||
+      row?.company ||
+      row?.name ||
+      row?.organizationName ||
+      row?.organization ||
+      row?.employer ||
+      row?.accountName ||
+      row?.title ||
+      ""
+  ).trim();
+}
+
+function uniqueCompanies(rows: any[]) {
   return new Set(
-    rows
-      .map((row) => String(row?.[key] || "").trim().toLowerCase())
-      .filter(Boolean)
+    rows.map((row) => companyNameOf(row).toLowerCase()).filter(Boolean)
   ).size;
 }
 
 function sourceCount(rows: any[]) {
-  const values = rows
-    .map((row) => row?.sourceName || row?.source || row?.sourceType || row?.url)
-    .map((value) => String(value || "").trim().toLowerCase())
-    .filter(Boolean);
-
-  return new Set(values).size;
+  return new Set(
+    rows
+      .map((row) => row?.sourceName || row?.source || row?.sourceType || row?.url)
+      .map((value) => String(value || "").trim().toLowerCase())
+      .filter(Boolean)
+  ).size;
 }
 
 export async function GET() {
@@ -36,98 +48,66 @@ export async function GET() {
     await pullPipelineDataFromBlob();
   }
 
-  const savedStatus = await readJson<any>("pipeline-status.json", null);
-
   const run = await readJson<any>("current-live-run.json", null);
   const raw = await readJson<any[]>("real-source-mentions.json", []);
-  const preclean = await readJson<any[]>("real-source-mentions-preclean.json", []);
+  const accepted = await readJson<any[]>("real-source-mentions-preclean.json", []);
   const rejected = await readJson<any[]>("real-source-mentions-rejected-preclean.json", []);
   const reviewed = await readJson<any[]>("ai-enriched-company-leads.json", []);
   const leads = await readJson<any[]>("company-dashboard-leads.json", []);
 
-  const reviewedVisible = leads.filter((lead) => lead.reviewStatus === "reviewed").length;
-  const pendingVisible = leads.filter((lead) => lead.reviewStatus === "pending").length;
-
-  const computedCards = {
+  const cards = {
     raw: raw.length,
     sources: sourceCount(raw),
-    companies: uniqueCount(raw) || raw.length,
+    companies: uniqueCompanies(raw) || raw.length,
     noise: rejected.length,
-    accepted: preclean.length,
+    accepted: accepted.length,
     rejected: rejected.length,
-    ready: uniqueCount(preclean),
+    ready: uniqueCompanies(accepted),
     reviewed: reviewed.length,
     queue: leads.length
   };
 
-  const hasLiveData =
-    computedCards.raw > 0 ||
-    computedCards.accepted > 0 ||
-    computedCards.reviewed > 0 ||
-    computedCards.queue > 0;
-
   let activeStep = "idle";
   let status = "idle";
-  let label = "No live run yet";
+  let label = "No fresh run yet";
 
-  if (computedCards.queue > 0 || computedCards.reviewed > 0) {
+  if (cards.queue > 0 || cards.reviewed > 0) {
     activeStep = "qualify";
     status = "complete";
     label = "Qualification complete";
-  } else if (computedCards.accepted > 0 || computedCards.ready > 0 || computedCards.rejected > 0) {
+  } else if (cards.accepted > 0 || cards.ready > 0 || cards.rejected > 0) {
     activeStep = "preclean";
     status = "complete";
     label = "Pre-clean complete";
-  } else if (computedCards.raw > 0 || computedCards.companies > 0) {
+  } else if (cards.raw > 0 || cards.companies > 0) {
     activeStep = "signal_scan";
     status = "complete";
     label = "Signal scan complete";
   }
 
-  if (savedStatus?.status === "running") {
-    activeStep = savedStatus.activeStep || activeStep;
-    status = "running";
-    label = savedStatus.label || label;
-  }
-
-  const payload = {
-    ok: true,
-    runId: run?.runId || savedStatus?.runId || null,
-    runStartedAt: run?.startedAt || savedStatus?.runStartedAt || null,
-    updatedAt: new Date().toISOString(),
-    activeStep,
-    status,
-    label,
-    cards: computedCards,
-    sourceStats: {
-      raw: raw.length,
-      sources: sourceCount(raw),
-      companies: uniqueCount(raw) || raw.length
+  return Response.json(
+    {
+      ok: true,
+      runId: run?.runId || null,
+      runStartedAt: run?.startedAt || null,
+      updatedAt: new Date().toISOString(),
+      activeStep,
+      status,
+      label,
+      cards,
+      sampleLeads: leads.slice(0, 5).map((lead) => ({
+        companyName: lead.companyName,
+        runId: lead.runId,
+        reviewStatus: lead.reviewStatus,
+        intentScore: lead.intentScore
+      }))
     },
-    precleanStats: {
-      accepted: preclean.length,
-      rejected: rejected.length,
-      ready: uniqueCount(preclean)
-    },
-    qualificationStats: {
-      reviewed: reviewed.length,
-      queue: leads.length,
-      reviewedVisible,
-      pendingVisible
-    },
-    sampleLeads: leads.slice(0, 5).map((lead) => ({
-      companyName: lead.companyName,
-      runId: lead.runId,
-      reviewStatus: lead.reviewStatus,
-      intentScore: lead.intentScore
-    }))
-  };
-
-  return Response.json(payload, {
-    headers: {
-      "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-      Pragma: "no-cache",
-      Expires: "0"
+    {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        Pragma: "no-cache",
+        Expires: "0"
+      }
     }
-  });
+  );
 }

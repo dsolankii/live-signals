@@ -20,30 +20,23 @@ type PipelineStep =
 const stepScripts: Record<PipelineStep, string[]> = {
   collect_sources: [
     "scripts/reset-live-run.mjs",
-    "scripts/write-pipeline-status.mjs start",
     "scripts/collect-sources.mjs",
     "scripts/collect-extra-sources.mjs",
     "scripts/collect-open-rss-sources.mjs",
     "scripts/collect-saas-conference-pages.mjs",
-    "scripts/normalize-raw-company-mentions.mjs",
-    "scripts/write-pipeline-status.mjs extract_done"
+    "scripts/normalize-raw-company-mentions.mjs"
   ],
   collect_extra: [
     "scripts/collect-extra-sources.mjs",
-    "scripts/normalize-raw-company-mentions.mjs",
-    "scripts/write-pipeline-status.mjs extract_done"
+    "scripts/normalize-raw-company-mentions.mjs"
   ],
   collect_saas: [
     "scripts/collect-saas-conference-pages.mjs",
-    "scripts/normalize-raw-company-mentions.mjs",
-    "scripts/write-pipeline-status.mjs extract_done"
+    "scripts/normalize-raw-company-mentions.mjs"
   ],
   preclean: [
-    "scripts/write-pipeline-status.mjs preclean",
     "scripts/normalize-raw-company-mentions.mjs",
-    "scripts/clean-source-mentions.mjs",
-    "scripts/preclean-real-sources.mjs",
-    "scripts/write-pipeline-status.mjs preclean_done"
+    "scripts/preclean-real-sources.mjs"
   ],
   qualify: [
     "scripts/qualify-company-queue.mjs"

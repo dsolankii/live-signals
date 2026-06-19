@@ -64,28 +64,24 @@ function csvEscape(value) {
 function isNoiseCompany(companyName) {
   const lower = companyName.toLowerCase();
 
-  const exactNoise = new Set([
-    "",
+  if (!lower || lower.length < 2) return true;
+  if (/^\d+$/.test(lower)) return true;
+
+  return new Set([
     "unknown",
     "n/a",
     "na",
-    "none",
     "null",
-    "remote",
+    "none",
     "job",
     "jobs",
     "career",
     "careers",
     "hiring",
     "apply",
+    "remote",
     "work from home"
-  ]);
-
-  if (exactNoise.has(lower)) return true;
-  if (companyName.length < 2) return true;
-  if (/^\d+$/.test(companyName)) return true;
-
-  return false;
+  ]).has(lower);
 }
 
 let rows = [];
@@ -106,16 +102,20 @@ for (const row of rows) {
   const signal = signalOf(row);
   const url = urlOf(row);
 
+  const normalized = {
+    ...row,
+    companyName,
+    sourceName,
+    signal,
+    url,
+    precleanedAt: new Date().toISOString()
+  };
+
   if (isNoiseCompany(companyName)) {
     rejected.push({
-      ...row,
-      companyName,
-      sourceName,
-      signal,
-      url,
+      ...normalized,
       precleanStatus: "rejected",
-      rejectReason: "invalid_or_noise_company_name",
-      precleanedAt: new Date().toISOString()
+      rejectReason: "noise_or_missing_company"
     });
     continue;
   }
@@ -131,21 +131,11 @@ for (const row of rows) {
   seen.add(key);
 
   accepted.push({
-    ...row,
-    companyName,
-    sourceName,
-    signal,
-    url,
-    precleanStatus: "accepted",
-    precleanedAt: new Date().toISOString()
+    ...normalized,
+    precleanStatus: "accepted"
   });
 }
 
-/**
- * Hard safety fallback:
- * A live run should never move from >0 raw rows to 0 accepted rows.
- * If that happens, keep normalized raw rows as accepted so qualification can continue.
- */
 const finalAccepted =
   accepted.length > 0
     ? accepted
@@ -169,14 +159,7 @@ const finalAccepted =
 await writeFile(acceptedPath, JSON.stringify(finalAccepted, null, 2));
 await writeFile(rejectedPath, JSON.stringify(rejected, null, 2));
 
-const csvHeader = [
-  "companyName",
-  "sourceName",
-  "signal",
-  "url",
-  "precleanStatus"
-];
-
+const csvHeader = ["companyName", "sourceName", "signal", "url", "precleanStatus"];
 const csvRows = finalAccepted.map((row) =>
   [
     row.companyName,
@@ -189,12 +172,16 @@ const csvRows = finalAccepted.map((row) =>
 
 await writeFile(acceptedCsvPath, [csvHeader.join(","), ...csvRows].join("\n") + "\n");
 
+const uniqueCompanies = new Set(
+  finalAccepted.map((row) => String(row.companyName || "").toLowerCase()).filter(Boolean)
+).size;
+
 console.log("Pre-clean complete");
 console.log(`Raw rows: ${rows.length}`);
 console.log(`Accepted rows: ${finalAccepted.length}`);
 console.log(`Rejected rows: ${rejected.length}`);
-console.log(`Unique accepted companies: ${new Set(finalAccepted.map((row) => row.companyName.toLowerCase())).size}`);
+console.log(`Unique accepted companies: ${uniqueCompanies}`);
 
 if (accepted.length === 0 && rows.length > 0) {
-  console.warn("Pre-clean fallback used: raw rows were normalized and accepted to protect live run.");
+  console.warn("Pre-clean fallback used: accepted normalized raw rows to protect this fresh run.");
 }
