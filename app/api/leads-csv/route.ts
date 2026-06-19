@@ -55,7 +55,6 @@ async function readState() {
 }
 
 export async function GET() {
-  if (process.env.VERCEL) await runLocalScript("scripts/blob-pull.mjs", 60 * 1000);
   try {
     const raw = await readFile(LEADS_PATH, "utf8");
     const allLeads = JSON.parse(raw);

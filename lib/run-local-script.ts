@@ -1,7 +1,8 @@
-import { access } from "fs/promises";
+import { access, mkdir, readFile, writeFile } from "fs/promises";
 import { constants } from "fs";
 import { spawn } from "child_process";
 import path from "path";
+import { list, put } from "@vercel/blob";
 
 export type RunLocalScriptResult = {
   ok: boolean;
@@ -16,12 +17,86 @@ const runtimeDataDir = isVercel
   ? "/tmp/leadgrid-data"
   : path.join(process.cwd(), "data");
 
+const blobPrefix = process.env.LEADGRID_BLOB_PREFIX || "leadgrid/data";
+
+const blobFiles = [
+  "current-live-run.json",
+  "real-source-mentions.json",
+  "real-source-mentions.csv",
+  "real-source-mentions-preclean.json",
+  "real-source-mentions-rejected-preclean.json",
+  "ai-enriched-company-leads.json",
+  "ai-enriched-company-leads.csv",
+  "company-dashboard-leads.json",
+  "company-dashboard-leads.csv",
+  "raw-company-mentions.json",
+  "leadgrid-visible-state.json",
+  "saas-conference-source-pages.json",
+  "open-lead-rss-sources.json"
+];
+
 export async function scriptExists(scriptPath: string) {
   try {
     await access(path.join(process.cwd(), scriptPath), constants.F_OK);
     return true;
   } catch {
     return false;
+  }
+}
+
+async function fileExists(filePath: string) {
+  try {
+    await access(filePath, constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function pullBlobData() {
+  if (!isVercel) return;
+
+  await mkdir(runtimeDataDir, { recursive: true });
+
+  const listed = await list({ prefix: `${blobPrefix}/` });
+  const byName = new Map<string, any>();
+
+  for (const blob of listed.blobs) {
+    const name = blob.pathname.replace(`${blobPrefix}/`, "");
+    byName.set(name, blob);
+  }
+
+  for (const file of blobFiles) {
+    const blob = byName.get(file);
+    if (!blob) continue;
+
+    const downloadUrl = blob.downloadUrl || blob.url;
+    const response = await fetch(downloadUrl);
+
+    if (!response.ok) {
+      throw new Error(`Blob pull failed for ${file}: ${response.status}`);
+    }
+
+    const text = await response.text();
+    await writeFile(path.join(runtimeDataDir, file), text);
+  }
+}
+
+async function pushBlobData() {
+  if (!isVercel) return;
+
+  await mkdir(runtimeDataDir, { recursive: true });
+
+  for (const file of blobFiles) {
+    const filePath = path.join(runtimeDataDir, file);
+    if (!(await fileExists(filePath))) continue;
+
+    const body = await readFile(filePath);
+
+    await put(`${blobPrefix}/${file}`, body, {
+      access: "private",
+      allowOverwrite: true
+    });
   }
 }
 
@@ -92,47 +167,28 @@ export async function runLocalScript(
   scriptPath: string,
   timeoutMs = 20 * 60 * 1000
 ): Promise<RunLocalScriptResult> {
-  const isBlobScript =
-    scriptPath.includes("blob-pull") ||
-    scriptPath.includes("blob-push") ||
-    scriptPath.includes("blob-sync");
+  try {
+    if (isVercel) {
+      await pullBlobData();
+    }
 
-  if (!isVercel || isBlobScript) {
-    return runNodeScript(scriptPath, timeoutMs);
-  }
+    const result = await runNodeScript(scriptPath, timeoutMs);
 
-  const pullResult = await runNodeScript("scripts/blob-pull.mjs", 60 * 1000);
+    if (!result.ok) {
+      return result;
+    }
 
-  if (!pullResult.ok) {
+    if (isVercel) {
+      await pushBlobData();
+    }
+
+    return result;
+  } catch (error: any) {
     return {
       ok: false,
-      code: pullResult.code,
-      stdout: pullResult.stdout,
-      stderr: `Blob pull failed before running ${scriptPath}\n${pullResult.stderr}`.trim()
+      code: null,
+      stdout: "",
+      stderr: error?.stack || error?.message || String(error)
     };
   }
-
-  const scriptResult = await runNodeScript(scriptPath, timeoutMs);
-
-  if (!scriptResult.ok) {
-    return scriptResult;
-  }
-
-  const pushResult = await runNodeScript("scripts/blob-push.mjs", 60 * 1000);
-
-  if (!pushResult.ok) {
-    return {
-      ok: false,
-      code: pushResult.code,
-      stdout: `${scriptResult.stdout}\n\n[BLOB PUSH STDOUT]\n${pushResult.stdout}`.trim(),
-      stderr: `${scriptResult.stderr}\n\nBlob push failed after running ${scriptPath}\n${pushResult.stderr}`.trim()
-    };
-  }
-
-  return {
-    ok: true,
-    code: scriptResult.code,
-    stdout: `${scriptResult.stdout}\n\n[BLOB PUSH STDOUT]\n${pushResult.stdout}`.trim(),
-    stderr: scriptResult.stderr
-  };
 }

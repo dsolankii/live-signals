@@ -141,7 +141,7 @@ export async function GET() {
         pathname,
         JSON.stringify({ ok: true, at: new Date().toISOString() }, null, 2),
         {
-          access: "public",
+          access: "private",
           allowOverwrite: true
         }
       );

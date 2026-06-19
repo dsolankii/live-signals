@@ -72,7 +72,6 @@ export async function POST() {
     const nextPipelinePage = Math.min(nextUnlockedPage + 1, totalPages - 1);
     const hasNext = nextUnlockedPage < totalPages - 1;
 
-    if (process.env.VERCEL) await runLocalScript("scripts/blob-push.mjs", 60 * 1000);
   return NextResponse.json(
       {
         ok: true,

@@ -89,7 +89,7 @@ async function push() {
     const body = await readFile(filePath);
 
     await put(blobPath(file), body, {
-      access: "public",
+      access: "private",
       allowOverwrite: true,
       contentType: contentType(file),
       cacheControlMaxAge: 0
