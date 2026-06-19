@@ -7,7 +7,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ROOT = process.cwd();
-const DATA_DIR = path.join(ROOT, "data");
+const DATA_DIR =
+  process.env.LEADGRID_DATA_DIR ||
+  (process.env.VERCEL ? "/tmp/leadgrid-data" : path.join(ROOT, "data"));
 const LOCK_FILE = path.join(DATA_DIR, ".ai-prefetch.lock");
 const LOG_FILE = path.join(DATA_DIR, "ai-prefetch-last.log");
 
@@ -27,13 +29,18 @@ function runDetachedPipeline() {
 
   const log = fs.createWriteStream(LOG_FILE, { flags: "a" });
 
-  log.write(`\n\n--- Prefetch started ${new Date().toISOString()} ---\n`);
+  log.write(`
+
+--- Prefetch started ${new Date().toISOString()} ---
+`);
 
   child.stdout.pipe(log);
   child.stderr.pipe(log);
 
   child.on("close", (code) => {
-    log.write(`\n--- Prefetch finished ${new Date().toISOString()} with code ${code} ---\n`);
+    log.write(`
+--- Prefetch finished ${new Date().toISOString()} with code ${code} ---
+`);
     log.end();
 
     try {

@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { DATA_DIR, dataPath } from "./data-dir.mjs";
 
-const DATA_DIR = path.join(process.cwd(), "data");
 
 const INPUT_JSON = path.join(DATA_DIR, "real-source-mentions.json");
 const ACCEPTED_JSON = path.join(DATA_DIR, "real-source-mentions-preclean.json");

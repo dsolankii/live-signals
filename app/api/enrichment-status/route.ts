@@ -7,7 +7,9 @@ export const dynamic = "force-dynamic";
 
 type AnyRow = Record<string, any>;
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR =
+  process.env.LEADGRID_DATA_DIR ||
+  (process.env.VERCEL ? "/tmp/leadgrid-data" : path.join(process.cwd(), "data"));
 const PRECLEAN_JSON = path.join(DATA_DIR, "real-source-mentions-preclean.json");
 const REJECTED_JSON = path.join(DATA_DIR, "real-source-mentions-rejected-preclean.json");
 const AI_COMPANY_JSON = path.join(DATA_DIR, "ai-enriched-company-leads.json");

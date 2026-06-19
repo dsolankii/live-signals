@@ -10,7 +10,9 @@ export const dynamic = "force-dynamic";
 const execFileAsync = promisify(execFile);
 
 const ROOT = process.cwd();
-const DATA_DIR = path.join(ROOT, "data");
+const DATA_DIR =
+  process.env.LEADGRID_DATA_DIR ||
+  (process.env.VERCEL ? "/tmp/leadgrid-data" : path.join(ROOT, "data"));
 const LOCK_FILE = path.join(DATA_DIR, ".ai-enrichment.lock");
 
 const PRECLEAN_JSON = path.join(DATA_DIR, "real-source-mentions-preclean.json");
@@ -182,7 +184,7 @@ export async function POST() {
         preclean: precleanResult.stdout,
         enrich: enrichResult.stdout,
         build: buildResult.stdout,
-        errors: [precleanResult.stderr, enrichResult.stderr, buildResult.stderr].filter(Boolean).join("\n"),
+        errors: [precleanResult.stderr, enrichResult.stderr, buildResult.stderr].filter(Boolean).join("\\n"),
       },
     });
   } catch (error: any) {

@@ -8,7 +8,6 @@ import { DATA_DIR, dataPath } from "./data-dir.mjs";
 dotenv.config({ path: ".env.local" });
 dotenv.config();
 
-const DATA_DIR = path.join(process.cwd(), "data");
 
 const INPUT_JSON = path.join(DATA_DIR, "real-source-mentions-preclean.json");
 const OUTPUT_JSON = path.join(DATA_DIR, "ai-enriched-company-leads.json");

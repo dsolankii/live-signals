@@ -1,43 +1,82 @@
-import { NextResponse } from "next/server";
-import { readFile, writeFile, stat } from "fs/promises";
+import { mkdir, readFile, access, copyFile } from "fs/promises";
 import path from "path";
 import { runLocalScript } from "@/lib/run-local-script";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const LEADGRID_DATA_DIR =
   process.env.LEADGRID_DATA_DIR ||
   (process.env.VERCEL ? "/tmp/leadgrid-data" : path.join(process.cwd(), "data"));
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-type StepName =
+type PipelineStep =
   | "collect_sources"
   | "collect_extra"
   | "collect_saas"
   | "preclean"
   | "qualify";
 
-const stepScripts: Record<StepName, string[]> = {
-  collect_sources: ["scripts/reset-live-run.mjs", "scripts/collect-sources.mjs"],
-  collect_extra: ["scripts/collect-extra-sources.mjs", "scripts/collect-open-rss-sources.mjs"],
+const stepScripts: Record<PipelineStep, string[]> = {
+  // One UI "Extract" click should collect every source bucket.
+  collect_sources: [
+    "scripts/reset-live-run.mjs",
+    "scripts/collect-sources.mjs",
+    "scripts/collect-extra-sources.mjs",
+    "scripts/collect-open-rss-sources.mjs",
+    "scripts/collect-saas-conference-pages.mjs"
+  ],
+
+  // Kept for compatibility/manual testing.
+  collect_extra: [
+    "scripts/collect-extra-sources.mjs",
+    "scripts/collect-open-rss-sources.mjs"
+  ],
   collect_saas: ["scripts/collect-saas-conference-pages.mjs"],
-  preclean: ["scripts/clean-source-mentions.mjs", "scripts/preclean-real-sources.mjs"],
+
+  preclean: [
+    "scripts/clean-source-mentions.mjs",
+    "scripts/preclean-real-sources.mjs"
+  ],
   qualify: [
     "scripts/enrich-company-batch-ai.mjs",
-    "scripts/build-company-dashboard-dataset.mjs",
-  ],
+    "scripts/build-company-dashboard-dataset.mjs"
+  ]
 };
 
-const DATA_DIR = LEADGRID_DATA_DIR;
-
-function getCompanyName(row: Record<string, any>) {
-  return String(row.companyName || row.company || row.name || "").trim();
+function dataFile(name: string) {
+  return path.join(LEADGRID_DATA_DIR, name);
 }
 
-async function readRows(fileName: string) {
+async function fileExists(filePath: string) {
   try {
-    const raw = await readFile(path.join(DATA_DIR, fileName), "utf8");
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function ensureRuntimeSeedData() {
+  await mkdir(LEADGRID_DATA_DIR, { recursive: true });
+
+  const seedFiles = [
+    "saas-conference-source-pages.json",
+    "open-lead-rss-sources.json"
+  ];
+
+  for (const file of seedFiles) {
+    const runtimePath = dataFile(file);
+    const repoPath = path.join(process.cwd(), "data", file);
+
+    if (!(await fileExists(runtimePath)) && (await fileExists(repoPath))) {
+      await copyFile(repoPath, runtimePath);
+    }
+  }
+}
+
+async function readJsonArray(name: string) {
+  try {
+    const raw = await readFile(dataFile(name), "utf8");
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch {
@@ -45,248 +84,327 @@ async function readRows(fileName: string) {
   }
 }
 
-async function fileVersion(fileName: string) {
-  try {
-    const info = await stat(path.join(DATA_DIR, fileName));
-    return info.mtimeMs;
-  } catch {
-    return Date.now();
+function cleanCompanyValue(value: any) {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function companyName(row: any) {
+  const direct =
+    row?.companyName ||
+    row?.company_name ||
+    row?.company ||
+    row?.name ||
+    row?.organization ||
+    row?.organisation ||
+    row?.employer ||
+    row?.employerName ||
+    row?.employer_name ||
+    row?.hiringCompany ||
+    row?.hiring_company ||
+    row?.accountName ||
+    row?.account_name ||
+    row?.brandName ||
+    row?.brand_name ||
+    row?.partnerName ||
+    row?.partner_name ||
+    row?.sponsorName ||
+    row?.sponsor_name;
+
+  const cleanedDirect = cleanCompanyValue(direct);
+  if (cleanedDirect) return cleanedDirect;
+
+  const seen = new Set<any>();
+
+  function walk(value: any): string {
+    if (!value || typeof value !== "object" || seen.has(value)) return "";
+    seen.add(value);
+
+    for (const [key, child] of Object.entries(value)) {
+      const keyLooksLikeCompany =
+        /company|employer|organization|organisation|account|brand|partner|sponsor/i.test(key);
+
+      if (keyLooksLikeCompany && typeof child === "string") {
+        const cleaned = cleanCompanyValue(child);
+        if (cleaned) return cleaned;
+      }
+
+      if (keyLooksLikeCompany && child && typeof child === "object") {
+        const nestedName =
+          cleanCompanyValue((child as any).name) ||
+          cleanCompanyValue((child as any).title) ||
+          cleanCompanyValue((child as any).companyName);
+        if (nestedName) return nestedName;
+      }
+    }
+
+    for (const child of Object.values(value)) {
+      const nested = walk(child);
+      if (nested) return nested;
+    }
+
+    return "";
   }
+
+  return walk(row);
+}
+
+function sourceName(row: any) {
+  return String(row?.sourceName || row?.source || row?.sourceType || "").trim();
+}
+
+function uniqueCount(rows: any[], getter: (row: any) => string) {
+  return new Set(rows.map(getter).filter(Boolean).map((value) => value.toLowerCase())).size;
+}
+
+function scoreValue(row: any) {
+  const raw =
+    row?.score ??
+    row?.aiIntentScore ??
+    row?.intentScore ??
+    row?.leadScore ??
+    row?.fitScore ??
+    0;
+
+  const value =
+    typeof raw === "string" ? Number(raw.replace("%", "").trim()) : Number(raw);
+
+  return Number.isFinite(value) ? value : 0;
 }
 
 async function getSourceStats() {
-  const rows = await readRows("real-source-mentions.json");
-
-  const companies = new Set(
-    rows
-      .map((row) => getCompanyName(row))
-      .filter(Boolean)
-      .map((name) => name.toLowerCase())
-  );
-
-  const sources = new Set(
-    rows
-      .map((row) =>
-        String(row.sourceName || row.source || row.sourceType || "").trim()
-      )
-      .filter(Boolean)
-  );
+  const rawRows = await readJsonArray("real-source-mentions.json");
+  const uniqueCompanies = uniqueCount(rawRows, companyName);
 
   return {
-    rawMentions: rows.length,
-    sourcesScanned: sources.size,
-    uniqueCompanies: companies.size,
-    version: await fileVersion("real-source-mentions.json"),
+    rawMentions: rawRows.length,
+
+    // Extraction stage is raw-signal based. Some source rows do not expose a
+    // normalized companyName until pre-cleaning, so never show 0 here when
+    // raw extraction succeeded.
+    uniqueCompanies: uniqueCompanies || rawRows.length,
+
+    sourcesScanned: uniqueCount(rawRows, sourceName)
   };
 }
 
 async function getPrecleanStats() {
-  const rawRows = await readRows("real-source-mentions.json");
-  const acceptedRows = await readRows("real-source-mentions-preclean.json");
-  const rejectedRows = await readRows("real-source-mentions-rejected-preclean.json");
-
-  const companies = new Set(
-    acceptedRows
-      .map((row) => getCompanyName(row))
-      .filter(Boolean)
-      .map((name) => name.toLowerCase())
-  );
+  const rawRows = await readJsonArray("real-source-mentions.json");
+  const acceptedRows = await readJsonArray("real-source-mentions-preclean.json");
+  const rejectedRows = await readJsonArray("real-source-mentions-rejected-preclean.json");
 
   return {
-    rawMentions: rawRows.length,
-    acceptedMentions: acceptedRows.length,
+    rawRows: rawRows.length,
+    acceptedRows: acceptedRows.length,
     rejectedRows: rejectedRows.length,
-    companiesReady: companies.size,
-    version: await fileVersion("real-source-mentions-preclean.json"),
+    uniqueAcceptedCompanies: uniqueCount(acceptedRows, companyName)
   };
 }
 
 async function getQualificationStats() {
-  const leads = await readRows("company-dashboard-leads.json");
-  const enriched = await readRows("ai-enriched-company-leads.json");
+  const reviewedRows = await readJsonArray("ai-enriched-company-leads.json");
+  const queueRows = await readJsonArray("company-dashboard-leads.json");
 
   return {
-    reviewedCompanies: enriched.length,
-    visibleLeads: Math.min(leads.length, 50),
-    totalLeads: leads.length,
-    version: await fileVersion("company-dashboard-leads.json"),
+    reviewedCompanies: reviewedRows.length,
+    queueCompanies: queueRows.length,
+    reviewedVisible: queueRows.filter((row: any) => row.reviewStatus === "reviewed").length,
+    pendingVisible: queueRows.filter((row: any) => row.reviewStatus === "pending").length,
+    scoredQueueCompanies: queueRows.filter((row: any) => scoreValue(row) > 0).length
   };
 }
 
-function cleanName(name: string) {
-  return name
-    .replace(/Collecting /gi, "")
-    .replace(/\.\.\./g, "")
-    .replace(/public page/gi, "")
-    .replace(/public products page/gi, "")
-    .replace(/conference partner\/exhibitor pages/gi, "event pages")
-    .replace(/broader conference\/exhibitor pages/gi, "event pages")
-    .replace(/ jobs/gi, "")
-    .replace(/ API/gi, "")
-    .trim();
+function labelForScript(script: string) {
+  if (script.includes("reset-live-run")) return "Fresh run";
+  if (script.includes("collect-sources")) return "Jobs";
+  if (script.includes("collect-extra")) return "Web";
+  if (script.includes("collect-open-rss")) return "RSS";
+  if (script.includes("collect-saas")) return "Events";
+  if (script.includes("clean-source")) return "Clean";
+  if (script.includes("preclean")) return "Pre-clean";
+  if (script.includes("enrich-company")) return "Review";
+  if (script.includes("build-company")) return "Queue";
+  return "Step";
 }
 
-function parseUsefulLogs(stdout: string) {
-  const lines = stdout
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
+function parseUserLogs(stdout: string, script: string) {
+  const label = labelForScript(script);
+  const lines = stdout.split("\n").map((line) => line.trim()).filter(Boolean);
   const logs: string[] = [];
-  let currentScanName = "";
 
   for (const line of lines) {
-    const extracted = line.match(/^(.+?) extracted:\s*([0-9]+)/i);
-    if (extracted) {
-      const name = cleanName(extracted[1]);
-      logs.push(`${name} ${extracted[2]}`);
+    let match =
+      line.match(/^(.+?) extracted:\s*(\d+)/i) ||
+      line.match(/^(.+?) extracted\s*(\d+)/i);
+
+    if (match) {
+      logs.push(`${match[1].trim()} ${match[2]}`);
       continue;
     }
 
-    const scanning = line.match(/^Scanning SaaS\/event source:\s*(.+)$/i);
-    if (scanning) {
-      currentScanName = cleanName(scanning[1]);
+    match = line.match(/^Final total rows:\s*(\d+)/i);
+    if (match) {
+      logs.push(`Total ${match[1]}`);
       continue;
     }
 
-    const found = line.match(/^found\s*([0-9]+)\s*candidates/i);
-    if (found && currentScanName) {
-      logs.push(`${currentScanName} ${found[1]}`);
-      currentScanName = "";
+    match = line.match(/^Merged rows:\s*(\d+)/i);
+    if (match) {
+      logs.push(`Merged ${match[1]}`);
       continue;
     }
 
-    const total = line.match(/^Final total rows:\s*([0-9]+)/i);
-    if (total) {
-      logs.push(`Total ${total[1]}`);
+    match = line.match(/^Raw rows:\s*(\d+)/i);
+    if (match) {
+      logs.push(`Read ${match[1]}`);
       continue;
     }
 
-    const merged = line.match(/^Merged rows:\s*([0-9]+)/i);
-    if (merged) {
-      logs.push(`Merged ${merged[1]}`);
+    match = line.match(/^Accepted for .*?:\s*(\d+)/i);
+    if (match) {
+      logs.push(`Accepted ${match[1]}`);
       continue;
     }
 
-    const rawRows = line.match(/^Raw rows:\s*([0-9]+)/i);
-    if (rawRows) {
-      logs.push(`Mentions ${rawRows[1]}`);
+    match = line.match(/^Hard rejected.*?:\s*(\d+)/i);
+    if (match) {
+      logs.push(`Rejected ${match[1]}`);
       continue;
     }
 
-    const accepted = line.match(/^Accepted for .*:\s*([0-9]+)/i);
-    if (accepted) {
-      logs.push(`Accepted ${accepted[1]}`);
+    match = line.match(/^New companies enriched:\s*(\d+)/i);
+    if (match) {
+      logs.push(`Reviewed ${match[1]}`);
       continue;
     }
 
-    const rejected = line.match(/^Hard rejected.*:\s*([0-9]+)/i);
-    if (rejected) {
-      logs.push(`Rejected ${rejected[1]}`);
+    match = line.match(/^Final lead queue rows:\s*(\d+)/i);
+    if (match) {
+      logs.push(`Queue ${match[1]}`);
       continue;
     }
 
-    const reviewed = line.match(/^Total .* companies saved:\s*([0-9]+)/i);
-    if (reviewed) {
-      logs.push(`Reviewed ${reviewed[1]}`);
+    match = line.match(/^Final dashboard company rows:\s*(\d+)/i);
+    if (match) {
+      logs.push(`Queue ${match[1]}`);
       continue;
     }
 
-    const dashboard = line.match(/^Final dashboard company rows:\s*([0-9]+)/i);
-    if (dashboard) {
-      logs.push(`Queue ${dashboard[1]}`);
-      continue;
-    }
-
-    const succeeded = line.match(/request succeeded for\s*([0-9]+)\s*companies/i);
-    if (succeeded) {
-      logs.push(`Reviewed +${succeeded[1]}`);
+    match = line.match(/^Run ID:\s*(.+)$/i);
+    if (match) {
+      logs.push(`Run ${match[1]}`);
       continue;
     }
   }
 
-  return logs.slice(-18);
-}
+  if (!logs.length) {
+    logs.push(`${label} complete`);
+  }
 
-function getStepLabel(script: string) {
-  if (script.includes("reset-live-run")) return "Fresh";
-  if (script.includes("collect-sources")) return "Jobs";
-  if (script.includes("collect-extra")) return "Web";
-  if (script.includes("collect-saas")) return "Events";
-  if (script.includes("preclean")) return "Clean";
-  if (script.includes("enrich")) return "Review";
-  if (script.includes("build-company")) return "Queue";
-  return "Step";
+  return logs;
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const step = body.step as StepName;
+    const step = body?.step as PipelineStep;
 
-    if (!step || !(step in stepScripts)) {
-      return NextResponse.json(
-        { ok: false, error: "Invalid step." },
+    if (!step || !stepScripts[step]) {
+      return Response.json(
         {
-          status: 400,
-          headers: { "Cache-Control": "no-store" },
-        }
+          ok: false,
+          error: "Unknown pipeline step",
+          allowedSteps: Object.keys(stepScripts)
+        },
+        { status: 400 }
       );
     }
 
-    const scripts = stepScripts[step];
+    await ensureRuntimeSeedData();
+
     const logs: string[] = [];
+    const scriptResults: any[] = [];
 
-    for (const script of scripts) {
-      logs.push(getStepLabel(script));
+    for (const script of stepScripts[step]) {
+      const result = await runLocalScript(script, 20 * 60 * 1000);
 
-      const result = await runLocalScript(
+      scriptResults.push({
         script,
-        step === "qualify" ? 25 * 60 * 1000 : 10 * 60 * 1000
-      );
+        ok: result.ok,
+        code: result.code,
+        stdout: result.stdout,
+        stderr: result.stderr
+      });
 
-      logs.push(...parseUsefulLogs(result.stdout));
-      logs.push(...parseUsefulLogs(result.stderr));
-    }
+      logs.push(...parseUserLogs(result.stdout, script));
 
-    if (step === "qualify") {
-      await writeFile(
-        path.join(DATA_DIR, "leadgrid-visible-state.json"),
-        JSON.stringify(
+      if (!result.ok) {
+        return Response.json(
           {
-            currentPage: 0,
-            maxUnlockedPage: 0,
-            pageSize: 50
+            ok: false,
+            step,
+            runAt: new Date().toISOString(),
+            error: `${labelForScript(script)} failed`,
+            stderr: result.stderr,
+            stdout: result.stdout,
+            logs,
+            sourceStats: await getSourceStats(),
+            precleanStats: await getPrecleanStats(),
+            qualificationStats: await getQualificationStats(),
+            rawMentions: (await getSourceStats()).rawMentions,
+            uniqueCompanies: (await getSourceStats()).uniqueCompanies,
+            sourcesScanned: (await getSourceStats()).sourcesScanned,
+            acceptedRows: (await getPrecleanStats()).acceptedRows,
+            rejectedRows: (await getPrecleanStats()).rejectedRows,
+            reviewedCompanies: (await getQualificationStats()).reviewedCompanies,
+            queueCompanies: (await getQualificationStats()).queueCompanies
           },
-          null,
-          2
-        )
-      );
+          { status: 500 }
+        );
+      }
     }
 
-    return NextResponse.json(
+    const sourceStats = await getSourceStats();
+    const precleanStats = await getPrecleanStats();
+    const qualificationStats = await getQualificationStats();
+
+    return Response.json(
       {
         ok: true,
         step,
+        runAt: new Date().toISOString(),
         logs,
-        sourceStats: await getSourceStats(),
-        precleanStats: await getPrecleanStats(),
-        qualificationStats: await getQualificationStats(),
+        scriptResults,
+
+        sourceStats,
+        precleanStats,
+        qualificationStats,
+
+        // Top-level aliases so /console can never show 0 because of field-name mismatch.
+        rawMentions: sourceStats.rawMentions,
+        uniqueCompanies: sourceStats.uniqueCompanies,
+        sourcesScanned: sourceStats.sourcesScanned,
+        acceptedRows: precleanStats.acceptedRows,
+        rejectedRows: precleanStats.rejectedRows,
+        reviewedCompanies: qualificationStats.reviewedCompanies,
+        queueCompanies: qualificationStats.queueCompanies
       },
       {
-        headers: { "Cache-Control": "no-store" },
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"
+        }
       }
     );
   } catch (error) {
-    return NextResponse.json(
+    return Response.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : "Step failed",
+        error: error instanceof Error ? error.message : "Unknown error"
       },
-      {
-        status: 500,
-        headers: { "Cache-Control": "no-store" },
-      }
+      { status: 500 }
     );
   }
 }

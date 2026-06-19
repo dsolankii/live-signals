@@ -3,7 +3,6 @@ import path from "path";
 import { DATA_DIR, dataPath } from "./data-dir.mjs";
 
 const ROOT = process.cwd();
-const DATA_DIR = DATA_DIR;
 
 const PRE_CLEAN_PATH = path.join(DATA_DIR, "real-source-mentions-preclean.json");
 const AI_PATH = path.join(DATA_DIR, "ai-enriched-company-leads.json");

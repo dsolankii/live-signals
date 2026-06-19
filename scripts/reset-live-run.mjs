@@ -1,9 +1,6 @@
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { DATA_DIR, dataPath } from "./data-dir.mjs";
-
-const ROOT = process.cwd();
-const DATA_DIR = DATA_DIR;
+import { DATA_DIR } from "./data-dir.mjs";
 
 await mkdir(DATA_DIR, { recursive: true });
 
