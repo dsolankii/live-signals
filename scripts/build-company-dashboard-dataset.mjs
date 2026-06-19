@@ -4,12 +4,12 @@ import { DATA_DIR, dataPath } from "./data-dir.mjs";
 
 const ROOT = process.cwd();
 
-const PRE_CLEAN_PATH = path.join(DATA_DIR, "real-source-mentions-preclean.json");
-const AI_PATH = path.join(DATA_DIR, "ai-enriched-company-leads.json");
-const OUT_JSON = path.join(DATA_DIR, "company-dashboard-leads.json");
-const OUT_CSV = path.join(DATA_DIR, "company-dashboard-leads.csv");
-const RAW_COMPANY_MENTIONS = path.join(DATA_DIR, "raw-company-mentions.json");
-const CURRENT_RUN_PATH = path.join(DATA_DIR, "current-live-run.json");
+const PRE_CLEAN_PATH = dataPath( "real-source-mentions-preclean.json");
+const AI_PATH = dataPath( "ai-enriched-company-leads.json");
+const OUT_JSON = dataPath( "company-dashboard-leads.json");
+const OUT_CSV = dataPath( "company-dashboard-leads.csv");
+const RAW_COMPANY_MENTIONS = dataPath( "raw-company-mentions.json");
+const CURRENT_RUN_PATH = dataPath( "current-live-run.json");
 
 function clean(value) {
   return String(value || "").replace(/\s+/g, " ").trim();

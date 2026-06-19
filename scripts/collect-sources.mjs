@@ -4,8 +4,8 @@ import { DATA_DIR, dataPath } from "./data-dir.mjs";
 
 dotenv.config({ path: ".env.local" });
 
-const OUTPUT_JSON = "data/real-source-mentions.json";
-const OUTPUT_CSV = "data/real-source-mentions.csv";
+const OUTPUT_JSON = dataPath("real-source-mentions.json");
+const OUTPUT_CSV = dataPath("real-source-mentions.csv");
 
 const MAX_REMOTE_OK_JOBS = Number(process.env.MAX_REMOTE_OK_JOBS || 120);
 const MAX_ARBEITNOW_JOBS = Number(process.env.MAX_ARBEITNOW_JOBS || 120);

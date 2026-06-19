@@ -9,10 +9,10 @@ dotenv.config({ path: ".env.local" });
 dotenv.config();
 
 
-const INPUT_JSON = path.join(DATA_DIR, "real-source-mentions-preclean.json");
-const OUTPUT_JSON = path.join(DATA_DIR, "ai-enriched-company-leads.json");
-const OUTPUT_CSV = path.join(DATA_DIR, "ai-enriched-company-leads.csv");
-const RAW_RESPONSE_FILE = path.join(DATA_DIR, "ai-company-batch-last-raw-response.txt");
+const INPUT_JSON = dataPath( "real-source-mentions-preclean.json");
+const OUTPUT_JSON = dataPath( "ai-enriched-company-leads.json");
+const OUTPUT_CSV = dataPath( "ai-enriched-company-leads.csv");
+const RAW_RESPONSE_FILE = dataPath( "ai-company-batch-last-raw-response.txt");
 
 const BATCH_SIZE = 50;
 const MAX_EVIDENCE_ROWS_PER_COMPANY = 8;
@@ -626,7 +626,7 @@ async function enrichBatchWithRetry(companies, depth = 0) {
     console.warn(`${prefix}AI request failed for ${companies.length} companies: ${error.message}`);
 
     if (companies.length <= 1) {
-      const failedFile = path.join(DATA_DIR, "ai-company-failed-single.json");
+      const failedFile = dataPath( "ai-company-failed-single.json");
       fs.writeFileSync(failedFile, JSON.stringify(companies[0], null, 2));
       console.warn(`${prefix}Skipping one company after repeated AI parse failure: ${companies[0]?.companyName}`);
       console.warn(`${prefix}Saved failed company to ${failedFile}`);

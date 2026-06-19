@@ -3,11 +3,11 @@ import path from "node:path";
 import { DATA_DIR, dataPath } from "./data-dir.mjs";
 
 
-const INPUT_JSON = path.join(DATA_DIR, "real-source-mentions.json");
-const ACCEPTED_JSON = path.join(DATA_DIR, "real-source-mentions-preclean.json");
-const REJECTED_JSON = path.join(DATA_DIR, "real-source-mentions-rejected-preclean.json");
-const ACCEPTED_CSV = path.join(DATA_DIR, "real-source-mentions-preclean.csv");
-const REJECTED_CSV = path.join(DATA_DIR, "real-source-mentions-rejected-preclean.csv");
+const INPUT_JSON = dataPath( "real-source-mentions.json");
+const ACCEPTED_JSON = dataPath( "real-source-mentions-preclean.json");
+const REJECTED_JSON = dataPath( "real-source-mentions-rejected-preclean.json");
+const ACCEPTED_CSV = dataPath( "real-source-mentions-preclean.csv");
+const REJECTED_CSV = dataPath( "real-source-mentions-rejected-preclean.csv");
 
 function readJson(filePath) {
   if (!fs.existsSync(filePath)) return [];

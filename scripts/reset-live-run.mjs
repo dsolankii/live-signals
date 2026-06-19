@@ -1,6 +1,6 @@
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { DATA_DIR } from "./data-dir.mjs";
+import { DATA_DIR, dataPath } from "./data-dir.mjs";
 
 await mkdir(DATA_DIR, { recursive: true });
 
@@ -8,7 +8,7 @@ const startedAt = new Date().toISOString();
 const runId = `run_${startedAt.replace(/[-:.TZ]/g, "").slice(0, 14)}`;
 
 await writeFile(
-  path.join(DATA_DIR, "current-live-run.json"),
+  dataPath( "current-live-run.json"),
   JSON.stringify(
     {
       runId,
@@ -19,16 +19,16 @@ await writeFile(
   )
 );
 
-await writeFile(path.join(DATA_DIR, "ai-enriched-company-leads.json"), "[]\n");
-await writeFile(path.join(DATA_DIR, "ai-enriched-company-leads.csv"), "companyName\n");
+await writeFile(dataPath( "ai-enriched-company-leads.json"), "[]\n");
+await writeFile(dataPath( "ai-enriched-company-leads.csv"), "companyName\n");
 
-await writeFile(path.join(DATA_DIR, "company-dashboard-leads.json"), "[]\n");
-await writeFile(path.join(DATA_DIR, "company-dashboard-leads.csv"), "companyName\n");
+await writeFile(dataPath( "company-dashboard-leads.json"), "[]\n");
+await writeFile(dataPath( "company-dashboard-leads.csv"), "companyName\n");
 
-await writeFile(path.join(DATA_DIR, "raw-company-mentions.json"), "[]\n");
+await writeFile(dataPath( "raw-company-mentions.json"), "[]\n");
 
 await writeFile(
-  path.join(DATA_DIR, "leadgrid-visible-state.json"),
+  dataPath( "leadgrid-visible-state.json"),
   JSON.stringify(
     {
       currentPage: 0,

@@ -4,9 +4,9 @@ import { DATA_DIR, dataPath } from "./data-dir.mjs";
 
 dotenv.config({ path: ".env.local" });
 
-const INPUT_JSON = "data/real-source-mentions.json";
-const OUTPUT_JSON = "data/real-source-mentions.json";
-const OUTPUT_CSV = "data/real-source-mentions.csv";
+const INPUT_JSON = dataPath("real-source-mentions.json");
+const OUTPUT_JSON = dataPath("real-source-mentions.json");
+const OUTPUT_CSV = dataPath("real-source-mentions.csv");
 
 const MAX_PRODUCT_HUNT_PRODUCTS = Number(process.env.MAX_PRODUCT_HUNT_PRODUCTS || 120);
 const MAX_YC_COMPANIES = Number(process.env.MAX_YC_COMPANIES || 120);
