@@ -24,6 +24,7 @@ const blobFiles = [
   "real-source-mentions.json",
   "real-source-mentions.csv",
   "real-source-mentions-preclean.json",
+  "real-source-mentions-preclean.csv",
   "real-source-mentions-rejected-preclean.json",
   "ai-enriched-company-leads.json",
   "ai-enriched-company-leads.csv",

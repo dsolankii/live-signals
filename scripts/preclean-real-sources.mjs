@@ -1,198 +1,200 @@
-import fs from "node:fs";
-import path from "node:path";
-import { DATA_DIR, dataPath } from "./data-dir.mjs";
+import { readFile, writeFile, mkdir } from "fs/promises";
+import path from "path";
+import { DATA_DIR } from "./data-dir.mjs";
 
+await mkdir(DATA_DIR, { recursive: true });
 
-const INPUT_JSON = dataPath( "real-source-mentions.json");
-const ACCEPTED_JSON = dataPath( "real-source-mentions-preclean.json");
-const REJECTED_JSON = dataPath( "real-source-mentions-rejected-preclean.json");
-const ACCEPTED_CSV = dataPath( "real-source-mentions-preclean.csv");
-const REJECTED_CSV = dataPath( "real-source-mentions-rejected-preclean.csv");
+const inputPath = path.join(DATA_DIR, "real-source-mentions.json");
+const acceptedPath = path.join(DATA_DIR, "real-source-mentions-preclean.json");
+const rejectedPath = path.join(DATA_DIR, "real-source-mentions-rejected-preclean.json");
+const acceptedCsvPath = path.join(DATA_DIR, "real-source-mentions-preclean.csv");
 
-function readJson(filePath) {
-  if (!fs.existsSync(filePath)) return [];
-  return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+function text(value) {
+  return String(value || "").trim();
 }
 
-function cleanText(value = "") {
-  return String(value)
-    .replace(/[�]/g, "")
-    .replace(/\r?\n|\r/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+function companyNameOf(row) {
+  return text(
+    row.companyName ||
+      row.company ||
+      row.name ||
+      row.organizationName ||
+      row.organization ||
+      row.employer ||
+      row.accountName ||
+      row.title
+  );
 }
 
-function getCompanyName(row) {
-  return cleanText(row.rawName || row.companyName || row.company || row.name || row.title || "");
+function sourceNameOf(row) {
+  return text(
+    row.sourceName ||
+      row.source ||
+      row.sourceType ||
+      row.channel ||
+      row.origin ||
+      row.feedName ||
+      "Live source"
+  );
 }
 
-function normalizeName(name = "") {
-  return cleanText(name)
-    .toLowerCase()
-    .replace(/\b(inc|inc\.|llc|ltd|ltd\.|corp|corp\.|corporation|company|co|co\.|limited|plc|gmbh|sa|ag)\b/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+function signalOf(row) {
+  return (
+    text(row.signal) ||
+    text(row.reason) ||
+    text(row.description) ||
+    text(row.snippet) ||
+    text(row.title) ||
+    "Live source signal"
+  );
+}
+
+function urlOf(row) {
+  return text(row.url || row.sourceUrl || row.link || row.applyUrl || row.companyUrl);
 }
 
 function csvEscape(value) {
-  const text = Array.isArray(value)
-    ? value.join("; ")
-    : typeof value === "object" && value !== null
-      ? JSON.stringify(value)
-      : String(value ?? "");
-
-  if (/[",\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
-  return text;
-}
-
-function writeCsv(filePath, rows) {
-  const allKeys = Array.from(
-    rows.reduce((set, row) => {
-      Object.keys(row).forEach((key) => set.add(key));
-      return set;
-    }, new Set())
-  );
-
-  const csv = [
-    allKeys.map(csvEscape).join(","),
-    ...rows.map((row) => allKeys.map((key) => csvEscape(row[key])).join(",")),
-  ].join("\n");
-
-  fs.writeFileSync(filePath, csv);
-}
-
-const exactNavigationLabels = new Set([
-  "",
-  "agenda",
-  "speakers",
-  "speaker",
-  "tickets",
-  "get tickets",
-  "book tickets",
-  "apply",
-  "venue",
-  "location",
-  "networking",
-  "sponsor us",
-  "become a sponsor",
-  "exhibitor portal",
-  "attendee portal",
-  "event",
-  "events",
-  "event organiser",
-  "event organizer",
-  "organiser",
-  "organizer",
-  "agenda speakers",
-  "agenda & speakers",
-  "parties side events",
-  "parties & side events",
-  "side events",
-  "cmo summit",
-  "cro summit",
-  "cco summit",
-  "meet a vc",
-  "pitch competition",
-]);
-
-function isObviousEventLabel(name, row) {
-  const normalized = normalizeName(name);
-  const sourceText = cleanText(`${row.sourceName || ""} ${row.sourceType || ""} ${row.sourceUrl || ""}`).toLowerCase();
-
-  if (exactNavigationLabels.has(normalized)) return true;
-
-  if (
-    sourceText.includes("conference") &&
-    /^(agenda|speaker|speakers|tickets|sponsor|venue|networking|event|events|organiser|organizer)$/i.test(normalized)
-  ) {
-    return true;
+  const s = String(value || "");
+  if (s.includes('"') || s.includes(",") || s.includes("\n")) {
+    return `"${s.replaceAll('"', '""')}"`;
   }
+  return s;
+}
 
-  if (/^shoptalk (fall|europe|luxe)$/i.test(name)) return true;
-  if (/^web summit (rio|qatar|lisbon)?$/i.test(name.trim())) return true;
-  if (/^saastr annual$/i.test(name.trim())) return true;
+function isNoiseCompany(companyName) {
+  const lower = companyName.toLowerCase();
+
+  const exactNoise = new Set([
+    "",
+    "unknown",
+    "n/a",
+    "na",
+    "none",
+    "null",
+    "remote",
+    "job",
+    "jobs",
+    "career",
+    "careers",
+    "hiring",
+    "apply",
+    "work from home"
+  ]);
+
+  if (exactNoise.has(lower)) return true;
+  if (companyName.length < 2) return true;
+  if (/^\d+$/.test(companyName)) return true;
 
   return false;
 }
 
-function hardRejectReason(row, seenExactRows) {
-  const name = getCompanyName(row);
-  const normalized = normalizeName(name);
+let rows = [];
 
-  if (!name) return "Missing company name.";
-  if (normalized.length < 2) return "Company name too short to be useful.";
-
-  const exactKey = [
-    normalized,
-    cleanText(row.sourceName || "").toLowerCase(),
-    cleanText(row.sourceUrl || "").toLowerCase(),
-    cleanText(row.description || row.homepageText || row.careersText || "").toLowerCase().slice(0, 400),
-  ].join("|");
-
-  if (seenExactRows.has(exactKey)) return "Exact duplicate source row.";
-
-  if (isObviousEventLabel(name, row)) {
-    return "Obvious event/navigation label, not a buyer company.";
-  }
-
-  const url = cleanText(row.sourceUrl || row.website || "").toLowerCase();
-  const description = cleanText(row.description || row.homepageText || row.careersText || "").toLowerCase();
-
-  if (!url && !description && name.length < 4) {
-    return "Too little evidence to identify entity.";
-  }
-
-  return "";
+try {
+  rows = JSON.parse(await readFile(inputPath, "utf8"));
+} catch {
+  rows = [];
 }
 
-const rows = readJson(INPUT_JSON);
 const accepted = [];
 const rejected = [];
-const seenExactRows = new Set();
+const seen = new Set();
 
 for (const row of rows) {
-  const reason = hardRejectReason(row, seenExactRows);
-  const name = getCompanyName(row);
-  const normalized = normalizeName(name);
+  const companyName = companyNameOf(row);
+  const sourceName = sourceNameOf(row);
+  const signal = signalOf(row);
+  const url = urlOf(row);
 
-  const exactKey = [
-    normalized,
-    cleanText(row.sourceName || "").toLowerCase(),
-    cleanText(row.sourceUrl || "").toLowerCase(),
-    cleanText(row.description || row.homepageText || row.careersText || "").toLowerCase().slice(0, 400),
-  ].join("|");
-
-  if (reason) {
+  if (isNoiseCompany(companyName)) {
     rejected.push({
       ...row,
-      rawName: name || row.rawName,
-      precleanDecision: "hard_reject",
-      precleanReason: reason,
-      expectedCategory: "trash",
-      expectedTrashReason: reason,
+      companyName,
+      sourceName,
+      signal,
+      url,
+      precleanStatus: "rejected",
+      rejectReason: "invalid_or_noise_company_name",
+      precleanedAt: new Date().toISOString()
     });
-  } else {
-    seenExactRows.add(exactKey);
-    accepted.push({
-      ...row,
-      rawName: name || row.rawName,
-      precleanDecision: "accepted_for_ai_review",
-      precleanReason: "Passed light hygiene filter. Lead quality left to AI.",
-    });
+    continue;
   }
+
+  const key = [
+    companyName.toLowerCase(),
+    sourceName.toLowerCase(),
+    url.toLowerCase(),
+    signal.toLowerCase()
+  ].join("|");
+
+  if (seen.has(key)) continue;
+  seen.add(key);
+
+  accepted.push({
+    ...row,
+    companyName,
+    sourceName,
+    signal,
+    url,
+    precleanStatus: "accepted",
+    precleanedAt: new Date().toISOString()
+  });
 }
 
-fs.mkdirSync(DATA_DIR, { recursive: true });
-fs.writeFileSync(ACCEPTED_JSON, JSON.stringify(accepted, null, 2));
-fs.writeFileSync(REJECTED_JSON, JSON.stringify(rejected, null, 2));
-writeCsv(ACCEPTED_CSV, accepted);
-writeCsv(REJECTED_CSV, rejected);
+/**
+ * Hard safety fallback:
+ * A live run should never move from >0 raw rows to 0 accepted rows.
+ * If that happens, keep normalized raw rows as accepted so qualification can continue.
+ */
+const finalAccepted =
+  accepted.length > 0
+    ? accepted
+    : rows
+        .map((row) => {
+          const companyName = companyNameOf(row);
+          if (!companyName) return null;
 
-console.log("Light pre-clean complete");
-console.log("------------------------");
+          return {
+            ...row,
+            companyName,
+            sourceName: sourceNameOf(row),
+            signal: signalOf(row),
+            url: urlOf(row),
+            precleanStatus: "accepted_fallback",
+            precleanedAt: new Date().toISOString()
+          };
+        })
+        .filter(Boolean);
+
+await writeFile(acceptedPath, JSON.stringify(finalAccepted, null, 2));
+await writeFile(rejectedPath, JSON.stringify(rejected, null, 2));
+
+const csvHeader = [
+  "companyName",
+  "sourceName",
+  "signal",
+  "url",
+  "precleanStatus"
+];
+
+const csvRows = finalAccepted.map((row) =>
+  [
+    row.companyName,
+    row.sourceName,
+    row.signal,
+    row.url,
+    row.precleanStatus
+  ].map(csvEscape).join(",")
+);
+
+await writeFile(acceptedCsvPath, [csvHeader.join(","), ...csvRows].join("\n") + "\n");
+
+console.log("Pre-clean complete");
 console.log(`Raw rows: ${rows.length}`);
-console.log(`Accepted for AI/company scoring: ${accepted.length}`);
-console.log(`Hard rejected as obvious garbage: ${rejected.length}`);
-console.log(`Wrote ${ACCEPTED_JSON}`);
-console.log(`Wrote ${REJECTED_JSON}`);
+console.log(`Accepted rows: ${finalAccepted.length}`);
+console.log(`Rejected rows: ${rejected.length}`);
+console.log(`Unique accepted companies: ${new Set(finalAccepted.map((row) => row.companyName.toLowerCase())).size}`);
+
+if (accepted.length === 0 && rows.length > 0) {
+  console.warn("Pre-clean fallback used: raw rows were normalized and accepted to protect live run.");
+}
