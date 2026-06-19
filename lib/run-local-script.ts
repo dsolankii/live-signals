@@ -101,11 +101,38 @@ export async function runLocalScript(
     return runNodeScript(scriptPath, timeoutMs);
   }
 
-  await runNodeScript("scripts/blob-pull.mjs", 60 * 1000);
+  const pullResult = await runNodeScript("scripts/blob-pull.mjs", 60 * 1000);
 
-  const result = await runNodeScript(scriptPath, timeoutMs);
+  if (!pullResult.ok) {
+    return {
+      ok: false,
+      code: pullResult.code,
+      stdout: pullResult.stdout,
+      stderr: `Blob pull failed before running ${scriptPath}\n${pullResult.stderr}`.trim()
+    };
+  }
 
-  await runNodeScript("scripts/blob-push.mjs", 60 * 1000);
+  const scriptResult = await runNodeScript(scriptPath, timeoutMs);
 
-  return result;
+  if (!scriptResult.ok) {
+    return scriptResult;
+  }
+
+  const pushResult = await runNodeScript("scripts/blob-push.mjs", 60 * 1000);
+
+  if (!pushResult.ok) {
+    return {
+      ok: false,
+      code: pushResult.code,
+      stdout: `${scriptResult.stdout}\n\n[BLOB PUSH STDOUT]\n${pushResult.stdout}`.trim(),
+      stderr: `${scriptResult.stderr}\n\nBlob push failed after running ${scriptPath}\n${pushResult.stderr}`.trim()
+    };
+  }
+
+  return {
+    ok: true,
+    code: scriptResult.code,
+    stdout: `${scriptResult.stdout}\n\n[BLOB PUSH STDOUT]\n${pushResult.stdout}`.trim(),
+    stderr: scriptResult.stderr
+  };
 }

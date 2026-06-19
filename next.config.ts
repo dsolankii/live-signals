@@ -4,7 +4,9 @@ const pipelineRuntimeFiles = [
   "./scripts/**/*",
   "./data/**/*",
   "./package.json",
-  "./node_modules/dotenv/**/*"
+  "./node_modules/dotenv/**/*",
+  "./node_modules/@google/genai/**/*",
+  "./node_modules/@vercel/blob/**/*"
 ];
 
 const nextConfig: NextConfig = {
