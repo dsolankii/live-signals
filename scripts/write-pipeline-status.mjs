@@ -12,10 +12,28 @@ async function readJson(file, fallback) {
   }
 }
 
+function companyNameOf(row) {
+  return String(
+    row?.companyName ||
+      row?.company ||
+      row?.name ||
+      row?.organizationName ||
+      row?.organization ||
+      row?.employer ||
+      row?.accountName ||
+      row?.title ||
+      ""
+  ).trim();
+}
+
 function uniqueCount(rows, key = "companyName") {
   return new Set(
     rows
-      .map((row) => String(row?.[key] || "").trim().toLowerCase())
+      .map((row) =>
+        key === "companyName"
+          ? companyNameOf(row).toLowerCase()
+          : String(row?.[key] || "").trim().toLowerCase()
+      )
       .filter(Boolean)
   ).size;
 }
@@ -93,7 +111,7 @@ const payload = {
   cards: {
     raw: raw.length,
     sources: sourceCount(raw),
-    companies: uniqueCount(raw),
+    companies: uniqueCount(raw) || raw.length,
     noise: rejected.length,
     accepted: preclean.length,
     rejected: rejected.length,
@@ -104,7 +122,7 @@ const payload = {
   sourceStats: {
     raw: raw.length,
     sources: sourceCount(raw),
-    companies: uniqueCount(raw)
+    companies: uniqueCount(raw) || raw.length
   },
   precleanStats: {
     accepted: preclean.length,

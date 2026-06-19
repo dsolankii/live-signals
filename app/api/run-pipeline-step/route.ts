@@ -18,41 +18,26 @@ type PipelineStep =
   | "qualify";
 
 const stepScripts: Record<PipelineStep, string[]> = {
-  // One UI "Extract" click should collect every source bucket.
   collect_sources: [
     "scripts/reset-live-run.mjs",
-      "scripts/write-pipeline-status.mjs start",
-    "scripts/write-pipeline-status.mjs extract",
-      "scripts/collect-sources.mjs",
-      "scripts/write-pipeline-status.mjs extract",
+    "scripts/write-pipeline-status.mjs start",
+    "scripts/collect-sources.mjs",
     "scripts/collect-extra-sources.mjs",
-      "scripts/write-pipeline-status.mjs extract",
     "scripts/collect-open-rss-sources.mjs",
-      "scripts/write-pipeline-status.mjs extract",
     "scripts/collect-saas-conference-pages.mjs",
-      "scripts/write-pipeline-status.mjs extract_done"
+    "scripts/normalize-raw-company-mentions.mjs",
+    "scripts/write-pipeline-status.mjs extract_done"
   ],
-
-  // Kept for compatibility/manual testing.
-  collect_extra: [
-    "scripts/collect-extra-sources.mjs",
-      "scripts/write-pipeline-status.mjs extract",
-    "scripts/collect-open-rss-sources.mjs",
-      "scripts/write-pipeline-status.mjs extract"
-  ],
-  collect_saas: ["scripts/collect-saas-conference-pages.mjs",
-      "scripts/write-pipeline-status.mjs extract_done"],
-
   preclean: [
     "scripts/write-pipeline-status.mjs preclean",
-      "scripts/clean-source-mentions.mjs",
-      "scripts/write-pipeline-status.mjs preclean",
+    "scripts/normalize-raw-company-mentions.mjs",
+    "scripts/clean-source-mentions.mjs",
     "scripts/preclean-real-sources.mjs",
-      "scripts/write-pipeline-status.mjs preclean_done"
+    "scripts/write-pipeline-status.mjs preclean_done"
   ],
-  qualify: ["scripts/write-pipeline-status.mjs qualify",
-      "scripts/qualify-company-queue.mjs",
-      "scripts/write-pipeline-status.mjs qualify_done"]
+  qualify: [
+    "scripts/qualify-company-queue.mjs"
+  ]
 };
 
 function dataFile(name: string) {

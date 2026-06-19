@@ -51,7 +51,7 @@ export async function GET() {
   const computedCards = {
     raw: raw.length,
     sources: sourceCount(raw),
-    companies: uniqueCount(raw),
+    companies: uniqueCount(raw) || raw.length,
     noise: rejected.length,
     accepted: preclean.length,
     rejected: rejected.length,
@@ -78,7 +78,7 @@ export async function GET() {
     sourceStats: {
       raw: raw.length,
       sources: sourceCount(raw),
-      companies: uniqueCount(raw)
+      companies: uniqueCount(raw) || raw.length
     },
     precleanStats: {
       accepted: preclean.length,

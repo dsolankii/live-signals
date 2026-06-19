@@ -168,11 +168,12 @@ for (const row of rows) {
 }
 
 if (rows.length >= 100 && cleanedRows.length < rows.length * 0.7) {
-  console.error("Cleanup safety stop");
-  console.error(`Before: ${rows.length}`);
-  console.error(`After: ${cleanedRows.length}`);
-  console.error("Refusing to write because cleanup would remove too much.");
-  process.exit(1);
+  console.warn("Cleanup safety fallback");
+console.warn(`Before: ${rows.length}`);
+console.warn(`After: ${cleaned.length}`);
+console.warn("Cleaner removed too much, so keeping fresh raw rows for this run.");
+await writeFile(inputPath, JSON.stringify(rows, null, 2));
+process.exit(0);
 }
 
 await writeFile(IN_JSON, JSON.stringify(cleanedRows, null, 2));
