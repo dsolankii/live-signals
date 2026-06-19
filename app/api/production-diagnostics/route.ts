@@ -132,7 +132,7 @@ export async function GET() {
 
   checks.push(
     await check("@vercel/blob auth + write + list", async () => {
-      const { put, list } = await import("@vercel/blob");
+      const { put, list, get } = await import("@vercel/blob");
 
       const prefix = process.env.LEADGRID_BLOB_PREFIX || "leadgrid/data";
       const pathname = `${prefix}/diagnostics.json`;
@@ -153,20 +153,25 @@ export async function GET() {
         throw new Error("Diagnostics blob was written but not found in list output");
       }
 
-      const downloadUrl = (diagnosticsBlob as any).downloadUrl || diagnosticsBlob.url;
-      const response = await fetch(downloadUrl, {
-        headers: process.env.BLOB_READ_WRITE_TOKEN
-          ? {
-              Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`
-            }
-          : undefined
+      const result = await get(pathname, {
+        access: "private"
       });
 
-      if (!response.ok) {
-        throw new Error(`Private blob read failed: ${response.status}`);
+      if (!result?.stream) {
+        throw new Error("Private blob read failed: no stream returned");
       }
 
-      const body = await response.text();
+      const reader = result.stream.getReader();
+      const chunks: Buffer[] = [];
+
+      while (true) {
+        const { value, done } = await reader.read();
+
+        if (done) break;
+        if (value) chunks.push(Buffer.from(value));
+      }
+
+      const body = Buffer.concat(chunks).toString("utf8");
 
       return {
         wrote: pathname,

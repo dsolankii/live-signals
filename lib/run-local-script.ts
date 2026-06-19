@@ -2,7 +2,7 @@ import { access, mkdir, readFile, writeFile } from "fs/promises";
 import { constants } from "fs";
 import { spawn } from "child_process";
 import path from "path";
-import { list, put } from "@vercel/blob";
+import { get, put } from "@vercel/blob";
 
 export type RunLocalScriptResult = {
   ok: boolean;
@@ -53,37 +53,54 @@ async function fileExists(filePath: string) {
   }
 }
 
+async function readPrivateBlobText(pathname: string) {
+  try {
+    const result = await get(pathname, {
+      access: "private"
+    });
+
+    if (!result?.stream) {
+      return null;
+    }
+
+    const reader = result.stream.getReader();
+    const chunks: Buffer[] = [];
+
+    while (true) {
+      const { value, done } = await reader.read();
+
+      if (done) break;
+      if (value) chunks.push(Buffer.from(value));
+    }
+
+    return Buffer.concat(chunks).toString("utf8");
+  } catch (error: any) {
+    const message = String(error?.message || error);
+
+    if (
+      error?.status === 404 ||
+      error?.statusCode === 404 ||
+      message.includes("404") ||
+      message.toLowerCase().includes("not found")
+    ) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
 async function pullBlobData() {
   if (!isVercel) return;
 
   await mkdir(runtimeDataDir, { recursive: true });
 
-  const listed = await list({ prefix: `${blobPrefix}/` });
-  const byName = new Map<string, any>();
-
-  for (const blob of listed.blobs) {
-    const name = blob.pathname.replace(`${blobPrefix}/`, "");
-    byName.set(name, blob);
-  }
-
   for (const file of blobFiles) {
-    const blob = byName.get(file);
-    if (!blob) continue;
+    const pathname = `${blobPrefix}/${file}`;
+    const text = await readPrivateBlobText(pathname);
 
-    const downloadUrl = blob.downloadUrl || blob.url;
-    const response = await fetch(downloadUrl, {
-      headers: process.env.BLOB_READ_WRITE_TOKEN
-        ? {
-            Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`
-          }
-        : undefined
-    });
+    if (text === null) continue;
 
-    if (!response.ok) {
-      throw new Error(`Blob pull failed for ${file}: ${response.status}`);
-    }
-
-    const text = await response.text();
     await writeFile(path.join(runtimeDataDir, file), text);
   }
 }
