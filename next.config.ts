@@ -1,40 +1,22 @@
 import type { NextConfig } from "next";
 
+const pipelineRuntimeFiles = [
+  "./scripts/**/*",
+  "./data/**/*",
+  "./package.json",
+  "./node_modules/dotenv/**/*"
+];
+
 const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
-    "/api/run-pipeline-step": [
-      "./scripts/**/*",
-      "./data/**/*",
-      "./package.json"
-    ],
-    "/api/leads": [
-      "./scripts/**/*",
-      "./data/**/*"
-    ],
-    "/api/leads-csv": [
-      "./scripts/**/*",
-      "./data/**/*"
-    ],
-    "/api/reveal-leads-next": [
-      "./scripts/**/*",
-      "./data/**/*"
-    ],
-    "/api/run-signal-scan": [
-      "./scripts/**/*",
-      "./data/**/*"
-    ],
-    "/api/enrich-next-batch": [
-      "./scripts/**/*",
-      "./data/**/*"
-    ],
-    "/api/prefetch-next-batch": [
-      "./scripts/**/*",
-      "./data/**/*"
-    ],
-    "/api/enrichment-status": [
-      "./scripts/**/*",
-      "./data/**/*"
-    ]
+    "/api/run-pipeline-step": pipelineRuntimeFiles,
+    "/api/leads": pipelineRuntimeFiles,
+    "/api/leads-csv": pipelineRuntimeFiles,
+    "/api/reveal-leads-next": pipelineRuntimeFiles,
+    "/api/run-signal-scan": pipelineRuntimeFiles,
+    "/api/enrich-next-batch": pipelineRuntimeFiles,
+    "/api/prefetch-next-batch": pipelineRuntimeFiles,
+    "/api/enrichment-status": pipelineRuntimeFiles
   }
 };
 
