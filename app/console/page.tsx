@@ -89,7 +89,7 @@ export default function ConsolePage() {
 
 
   async function runPipelineStep(step: string) {
-    const response = await fetch("/api/run-pipeline-step", {
+    const response = await fetch(`/api/run-pipeline-step?t=${Date.now()}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

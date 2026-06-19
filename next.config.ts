@@ -2,7 +2,6 @@ import type { NextConfig } from "next";
 
 const pipelineRuntimeFiles = [
   "./scripts/**/*",
-  "./data/**/*",
   "./package.json",
   "./node_modules/@google/genai/**/*",
   "./node_modules/@protobufjs/aspromise/**/*",

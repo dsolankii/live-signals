@@ -51,7 +51,6 @@ const nodeIncludes = [...seen]
 
 const baseIncludes = [
   '  "./scripts/**/*"',
-  '  "./data/**/*"',
   '  "./package.json"'
 ];
 

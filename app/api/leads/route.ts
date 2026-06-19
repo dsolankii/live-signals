@@ -1,72 +1,17 @@
+import { readFile } from "fs/promises";
 import { pullPipelineDataFromBlob } from "@/lib/run-local-script";
-import { runLocalScript } from "@/lib/run-local-script";
-import { NextResponse } from "next/server";
-import { readFile, writeFile, mkdir, stat } from "fs/promises";
-import path from "path";
-
-
-const LEADGRID_DATA_DIR =
-  process.env.LEADGRID_DATA_DIR ||
-  (process.env.VERCEL ? "/tmp/leadgrid-data" : path.join(process.cwd(), "data"));
+import { getPipelineDataPath } from "@/lib/pipeline-data-dir";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-const STATE_PATH = path.join(LEADGRID_DATA_DIR, "leadgrid-visible-state.json");
-const LEADS_PATH = path.join(LEADGRID_DATA_DIR, "company-dashboard-leads.json");
-
-function getScore(lead: Record<string, any>) {
-  const raw =
-    lead.aiIntentScore ||
-    lead.intentScore ||
-    lead.score ||
-    lead.aiScore ||
-    lead.confidenceScore ||
-    0;
-
-  const value = Number(raw);
-  return Number.isFinite(value) ? value : 0;
-}
-
-
-function getTime(lead: Record<string, any>) {
-  const raw =
-    lead.capturedAt ||
-    lead.updatedAt ||
-    lead.reviewedAt ||
-    lead.createdAt ||
-    lead.lastSeenAt ||
-    "";
-
-  const value = Date.parse(String(raw));
-  return Number.isFinite(value) ? value : 0;
-}
-
-
-async function getDataVersion() {
+async function readJsonFile<T>(fileName: string, fallback: T): Promise<T> {
   try {
-    const info = await stat(LEADS_PATH);
-    return info.mtimeMs;
+    const text = await readFile(getPipelineDataPath(fileName), "utf8");
+    return JSON.parse(text) as T;
   } catch {
-    return Date.now();
-  }
-}
-
-async function readState() {
-  try {
-    const raw = await readFile(STATE_PATH, "utf8");
-    const state = JSON.parse(raw);
-
-    return {
-      currentPage: Number.isFinite(Number(state.currentPage)) ? Number(state.currentPage) : 0,
-      maxUnlockedPage: Number.isFinite(Number(state.maxUnlockedPage)) ? Number(state.maxUnlockedPage) : 0,
-      pageSize: Number.isFinite(Number(state.pageSize)) ? Number(state.pageSize) : 50,
-    };
-  } catch {
-    await mkdir(path.dirname(STATE_PATH), { recursive: true });
-    const state = { currentPage: 0, maxUnlockedPage: 0, pageSize: 50 };
-    await writeFile(STATE_PATH, JSON.stringify(state, null, 2));
-    return state;
+    return fallback;
   }
 }
 
@@ -75,99 +20,54 @@ export async function GET() {
     await pullPipelineDataFromBlob();
   }
 
-  try {
-    const raw = await readFile(LEADS_PATH, "utf8");
-    const parsed = JSON.parse(raw);
-    const allLeads = Array.isArray(parsed) ? parsed : [];
+  const leads = await readJsonFile<any[]>("company-dashboard-leads.json", []);
+  const visibleState = await readJsonFile<any>("leadgrid-visible-state.json", {
+    currentPage: 0,
+    maxUnlockedPage: 0,
+    pageSize: 50
+  });
 
-    const sortedLeads = [...allLeads].sort((a, b) => {
-      const scoreDiff = getScore(b) - getScore(a);
-      if (scoreDiff !== 0) return scoreDiff;
-      return getTime(b) - getTime(a);
-    });
-    const state = await readState();
+  const pageSize = Number(visibleState.pageSize || 50);
+  const currentPage = Number(visibleState.currentPage || 0);
+  const maxUnlockedPage = Number(visibleState.maxUnlockedPage || 0);
 
-    const totalAvailable = sortedLeads.length;
-    const totalPages = Math.max(Math.ceil(totalAvailable / state.pageSize), 1);
+  const visibleStart = currentPage * pageSize;
+  const visibleEnd = visibleStart + pageSize;
+  const visibleLeads = leads.slice(visibleStart, visibleEnd);
 
-    const maxUnlockedPage = Math.min(
-      Math.max(state.maxUnlockedPage, 0),
-      totalPages - 1
-    );
+  const totalAvailable = leads.length;
+  const totalPages = Math.max(1, Math.ceil(totalAvailable / pageSize));
 
-    const currentPage = Math.min(
-      Math.max(state.currentPage, 0),
-      maxUnlockedPage
-    );
-
-    const startIndex = currentPage * state.pageSize;
-    const endIndex = Math.min(startIndex + state.pageSize, totalAvailable);
-    const pageLeads = sortedLeads.slice(startIndex, endIndex);
-
-    const nextPage = Math.min(maxUnlockedPage + 1, totalPages - 1);
-    const hasNextPrepared = maxUnlockedPage < totalPages - 1;
-    const nextStart = hasNextPrepared ? nextPage * state.pageSize + 1 : 0;
-    const nextEnd = hasNextPrepared
-      ? Math.min((nextPage + 1) * state.pageSize, totalAvailable)
-      : 0;
-
-    return NextResponse.json(
-      {
-        ok: true,
-        leads: pageLeads,
-        meta: {
-          dataVersion: await getDataVersion(),
-          totalAvailable,
-          totalPages,
-          currentPage,
-          maxUnlockedPage,
-          pageSize: state.pageSize,
-          visibleStart: totalAvailable === 0 ? 0 : startIndex + 1,
-          visibleEnd: endIndex,
-          visibleLeadCount: pageLeads.length,
-          scoredVisibleLeads: pageLeads.filter((lead) => getScore(lead) > 0).length,
-          hiddenLeft: Math.max(
-            totalAvailable - Math.min((maxUnlockedPage + 1) * state.pageSize, totalAvailable),
-            0
-          ),
-          canGoPrev: currentPage > 0,
-          canGoNext: currentPage < maxUnlockedPage,
-          canUnlockNext: hasNextPrepared,
-          nextStart,
-          nextEnd,
-        },
-      },
-      {
-        headers: { "Cache-Control": "no-store" },
+  return Response.json(
+    {
+      ok: true,
+      generatedAt: new Date().toISOString(),
+      leads: visibleLeads,
+      meta: {
+        dataVersion: Date.now(),
+        totalAvailable,
+        totalPages,
+        currentPage,
+        maxUnlockedPage,
+        pageSize,
+        visibleStart,
+        visibleEnd: Math.min(visibleEnd, totalAvailable),
+        visibleLeadCount: visibleLeads.length,
+        scoredVisibleLeads: visibleLeads.filter((lead) => Number(lead.intentScore || 0) > 0).length,
+        hiddenLeft: Math.max(0, totalAvailable - visibleEnd),
+        canGoPrev: currentPage > 0,
+        canGoNext: currentPage < maxUnlockedPage,
+        canUnlockNext: visibleEnd < totalAvailable,
+        nextStart: visibleEnd,
+        nextEnd: Math.min(visibleEnd + pageSize, totalAvailable)
       }
-    );
-  } catch {
-    return NextResponse.json(
-      {
-        ok: true,
-        leads: [],
-        meta: {
-          dataVersion: Date.now(),
-          totalAvailable: 0,
-          totalPages: 1,
-          currentPage: 0,
-          maxUnlockedPage: 0,
-          pageSize: 50,
-          visibleStart: 0,
-          visibleEnd: 0,
-          visibleLeadCount: 0,
-          scoredVisibleLeads: 0,
-          hiddenLeft: 0,
-          canGoPrev: false,
-          canGoNext: false,
-          canUnlockNext: false,
-          nextStart: 0,
-          nextEnd: 0,
-        },
-      },
-      {
-        headers: { "Cache-Control": "no-store" },
+    },
+    {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        Pragma: "no-cache",
+        Expires: "0"
       }
-    );
-  }
+    }
+  );
 }
