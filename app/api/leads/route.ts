@@ -1,3 +1,4 @@
+import { pullPipelineDataFromBlob } from "@/lib/run-local-script";
 import { runLocalScript } from "@/lib/run-local-script";
 import { NextResponse } from "next/server";
 import { readFile, writeFile, mkdir, stat } from "fs/promises";
@@ -70,6 +71,10 @@ async function readState() {
 }
 
 export async function GET() {
+  if (process.env.VERCEL) {
+    await pullPipelineDataFromBlob();
+  }
+
   try {
     const raw = await readFile(LEADS_PATH, "utf8");
     const parsed = JSON.parse(raw);

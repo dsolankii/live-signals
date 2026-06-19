@@ -38,10 +38,7 @@ const stepScripts: Record<PipelineStep, string[]> = {
     "scripts/clean-source-mentions.mjs",
     "scripts/preclean-real-sources.mjs"
   ],
-  qualify: [
-    "scripts/enrich-company-batch-ai.mjs",
-    "scripts/build-company-dashboard-dataset.mjs"
-  ]
+  qualify: ["scripts/qualify-company-queue.mjs"]
 };
 
 function dataFile(name: string) {

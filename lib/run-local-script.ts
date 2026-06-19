@@ -90,7 +90,7 @@ async function readPrivateBlobText(pathname: string) {
   }
 }
 
-async function pullBlobData() {
+export async function pullPipelineDataFromBlob() {
   if (!isVercel) return;
 
   await mkdir(runtimeDataDir, { recursive: true });
@@ -105,7 +105,7 @@ async function pullBlobData() {
   }
 }
 
-async function pushBlobData() {
+export async function pushPipelineDataToBlob() {
   if (!isVercel) return;
 
   await mkdir(runtimeDataDir, { recursive: true });
@@ -192,7 +192,7 @@ export async function runLocalScript(
 ): Promise<RunLocalScriptResult> {
   try {
     if (isVercel) {
-      await pullBlobData();
+      await pullPipelineDataFromBlob();
     }
 
     const result = await runNodeScript(scriptPath, timeoutMs);
@@ -202,7 +202,7 @@ export async function runLocalScript(
     }
 
     if (isVercel) {
-      await pushBlobData();
+      await pushPipelineDataToBlob();
     }
 
     return result;

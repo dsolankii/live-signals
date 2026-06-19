@@ -1,3 +1,4 @@
+import { pullPipelineDataFromBlob } from "@/lib/run-local-script";
 
 const LEADGRID_DATA_DIR =
   process.env.LEADGRID_DATA_DIR ||
@@ -55,6 +56,10 @@ async function readState() {
 }
 
 export async function GET() {
+  if (process.env.VERCEL) {
+    await pullPipelineDataFromBlob();
+  }
+
   try {
     const raw = await readFile(LEADS_PATH, "utf8");
     const allLeads = JSON.parse(raw);
