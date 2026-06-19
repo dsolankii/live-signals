@@ -1,185 +1,165 @@
-import { readFile, writeFile } from "fs/promises";
+import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { DATA_DIR, dataPath } from "./data-dir.mjs";
+import { DATA_DIR } from "./data-dir.mjs";
 
-const ROOT = process.cwd();
-const IN_JSON = dataPath("real-source-mentions.json");
-const OUT_CSV = dataPath("real-source-mentions.csv");
+await mkdir(DATA_DIR, { recursive: true });
 
-const BAD_EXACT = new Set([
-  "home",
-  "login",
-  "register",
-  "tickets",
-  "agenda",
-  "contact",
-  "contact us",
-  "book tickets",
-  "buy tickets",
-  "watch now",
-  "view agenda",
-  "download on the app store",
-  "download on google play",
-  "partners",
-  "partnerships",
-  "partnership showroom",
-  "terms & conditions",
-  "terms &#038; conditions",
-  "terms and conditions",
-  "search",
-  "menu",
-  "open",
-  "close",
-  "next",
-  "previous",
-  "back",
-  "share",
-  "download",
-  "privacy",
-  "privacy policy",
-  "terms",
-  "terms of service",
-  "cookie",
-  "cookies",
-  "newsletter",
-  "subscribe",
-  "header",
-  "footer",
-  "footer logo",
-  "json",
-  "rsd",
-  "scroll to top",
-  "click to start search",
-  "click to open the search input field",
-  "feast your mind",
-  "global village",
-  "interact",
-  "dublin tech summit",
-  "copyright and company info"
-]);
+const inputPath = path.join(DATA_DIR, "real-source-mentions.json");
+const csvPath = path.join(DATA_DIR, "real-source-mentions.csv");
 
-const BAD_CONTAINS = [
-  "powered by",
-  "all rights reserved",
-  "cookie policy",
-  "sustainability policy",
-  "early-table",
-  "feature sessions",
-  "dts partners - currently trusted",
-  "currently trusted by_",
-  "dts-partners-currently-trusted",
-  "icon:",
-  "oembed",
-  "» feed",
-  "comments feed",
-  "rss2 feed",
-  "dts logo"
-];
-
-function clean(value) {
-  return String(value || "")
-    .replace(/&amp;/g, "&")
-    .replace(/&#038;/g, "&")
-    .replace(/&raquo;/g, "»")
-    .replace(/\s+/g, " ")
-    .trim();
+function text(value) {
+  return String(value || "").trim();
 }
 
-function getCompanyName(row) {
-  return clean(
+function companyNameOf(row) {
+  return text(
     row.companyName ||
       row.company ||
       row.name ||
+      row.organizationName ||
       row.organization ||
-      row.organisation ||
       row.employer ||
-      ""
+      row.accountName ||
+      row.title
   );
 }
 
-function getSourceName(row) {
-  return clean(row.sourceName || row.source || row.sourceType || "Public source");
+function sourceNameOf(row) {
+  return text(
+    row.sourceName ||
+      row.source ||
+      row.sourceType ||
+      row.channel ||
+      row.origin ||
+      row.feedName ||
+      "Live source"
+  );
 }
 
-function isObviousJunk(value) {
-  const name = clean(value);
-  const lower = name.toLowerCase();
+function signalOf(row) {
+  return (
+    text(row.signal) ||
+    text(row.reason) ||
+    text(row.description) ||
+    text(row.snippet) ||
+    text(row.title) ||
+    "Live source signal"
+  );
+}
 
-  if (!name) return true;
-  if (name.length < 2 || name.length > 140) return true;
-  if (BAD_EXACT.has(lower)) return true;
-  if (BAD_CONTAINS.some((phrase) => lower.includes(phrase))) return true;
-  if (/^https?:\/\//i.test(name)) return true;
-  if (/^\d+$/.test(name)) return true;
-  if (/[{}[\]|<>]/.test(name)) return true;
-  if (/\.(png|jpg|jpeg|svg|gif|webp|css|js|ico)$/i.test(name)) return true;
-  if (/-\d+x\d+$/i.test(name)) return true;
-  if (/\b\d+x\d+\b/i.test(name)) return true;
-
-  return false;
+function urlOf(row) {
+  return text(row.url || row.sourceUrl || row.link || row.applyUrl || row.companyUrl);
 }
 
 function csvEscape(value) {
-  const text = String(value ?? "");
-  if (/[",\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
-  return text;
+  const s = String(value || "");
+  if (s.includes('"') || s.includes(",") || s.includes("\n")) {
+    return `"${s.replaceAll('"', '""')}"`;
+  }
+  return s;
 }
 
-function toCsv(rows) {
-  const headers = [
-    "companyName",
-    "sourceName",
-    "source",
-    "sourceType",
-    "sourceUrl",
-    "signal",
-    "mentionTitle",
-    "capturedAt"
-  ];
+let rows = [];
 
-  return [
-    headers.join(","),
-    ...rows.map((row) => headers.map((header) => csvEscape(row[header])).join(","))
-  ].join("\n");
+try {
+  rows = JSON.parse(await readFile(inputPath, "utf8"));
+} catch {
+  rows = [];
 }
 
-const raw = await readFile(IN_JSON, "utf8");
-const rows = JSON.parse(raw);
-
+const cleaned = [];
+const rejected = [];
 const seen = new Set();
-const cleanedRows = [];
 
 for (const row of rows) {
-  const companyName = getCompanyName(row);
-  const sourceName = getSourceName(row);
+  const companyName = companyNameOf(row);
+  const sourceName = sourceNameOf(row);
+  const signal = signalOf(row);
+  const url = urlOf(row);
 
-  if (isObviousJunk(companyName)) continue;
+  if (!companyName || companyName.length < 2) {
+    rejected.push({ ...row, rejectReason: "missing_company_name" });
+    continue;
+  }
 
-  const key = `${companyName.toLowerCase()}::${sourceName.toLowerCase()}`;
-  if (seen.has(key)) continue;
-  seen.add(key);
+  const lower = companyName.toLowerCase();
 
-  cleanedRows.push({
+  const obviousNoise =
+    lower === "unknown" ||
+    lower === "n/a" ||
+    lower === "remote" ||
+    lower === "job" ||
+    lower === "jobs" ||
+    lower === "hiring" ||
+    lower === "careers";
+
+  if (obviousNoise) {
+    rejected.push({ ...row, rejectReason: "obvious_noise_company_name" });
+    continue;
+  }
+
+  const normalized = {
     ...row,
     companyName,
     sourceName,
-    source: row.source || sourceName
-  });
+    signal,
+    url,
+    cleanedAt: new Date().toISOString()
+  };
+
+  const key = [
+    companyName.toLowerCase(),
+    sourceName.toLowerCase(),
+    url.toLowerCase(),
+    signal.toLowerCase()
+  ].join("|");
+
+  if (seen.has(key)) continue;
+  seen.add(key);
+
+  cleaned.push(normalized);
 }
 
-if (rows.length >= 100 && cleanedRows.length < rows.length * 0.7) {
-  console.warn("Cleanup safety fallback");
-console.warn(`Before: ${rows.length}`);
-console.warn(`After: ${cleaned.length}`);
-console.warn("Cleaner removed too much, so keeping fresh raw rows for this run.");
-await writeFile(inputPath, JSON.stringify(rows, null, 2));
-process.exit(0);
-}
+/**
+ * Safety rule:
+ * If cleaner removes everything, keep normalized raw rows instead of killing the live run.
+ */
+const finalRows = cleaned.length > 0 ? cleaned : rows.map((row) => ({
+  ...row,
+  companyName: companyNameOf(row) || text(row.title) || "Unknown company",
+  sourceName: sourceNameOf(row),
+  signal: signalOf(row),
+  url: urlOf(row),
+  cleanedAt: new Date().toISOString(),
+  cleanupFallback: true
+}));
 
-await writeFile(IN_JSON, JSON.stringify(cleanedRows, null, 2));
-await writeFile(OUT_CSV, toCsv(cleanedRows));
+await writeFile(inputPath, JSON.stringify(finalRows, null, 2));
 
-console.log("Source cleanup complete");
+const csvHeader = [
+  "companyName",
+  "sourceName",
+  "signal",
+  "url"
+];
+
+const csvRows = finalRows.map((row) =>
+  [
+    row.companyName,
+    row.sourceName,
+    row.signal,
+    row.url
+  ].map(csvEscape).join(",")
+);
+
+await writeFile(csvPath, [csvHeader.join(","), ...csvRows].join("\n") + "\n");
+
+console.log("Source mentions cleaned");
 console.log(`Before: ${rows.length}`);
-console.log(`After: ${cleanedRows.length}`);
-console.log(`Removed: ${rows.length - cleanedRows.length}`);
+console.log(`Cleaned: ${cleaned.length}`);
+console.log(`Rejected by cleaner: ${rejected.length}`);
+console.log(`Final rows kept: ${finalRows.length}`);
+
+if (cleaned.length === 0 && rows.length > 0) {
+  console.warn("Cleaner fallback used: kept normalized raw rows to protect live run.");
+}
