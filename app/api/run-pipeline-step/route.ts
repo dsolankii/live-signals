@@ -1,3 +1,4 @@
+export const maxDuration = 300;
 import { mkdir, readFile, access, copyFile } from "fs/promises";
 import path from "path";
 import { runLocalScript } from "@/lib/run-local-script";

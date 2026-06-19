@@ -1,3 +1,4 @@
+export const maxDuration = 300;
 import { NextResponse } from "next/server";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
