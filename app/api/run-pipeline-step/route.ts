@@ -28,6 +28,16 @@ const stepScripts: Record<PipelineStep, string[]> = {
     "scripts/normalize-raw-company-mentions.mjs",
     "scripts/write-pipeline-status.mjs extract_done"
   ],
+  collect_extra: [
+    "scripts/collect-extra-sources.mjs",
+    "scripts/normalize-raw-company-mentions.mjs",
+    "scripts/write-pipeline-status.mjs extract_done"
+  ],
+  collect_saas: [
+    "scripts/collect-saas-conference-pages.mjs",
+    "scripts/normalize-raw-company-mentions.mjs",
+    "scripts/write-pipeline-status.mjs extract_done"
+  ],
   preclean: [
     "scripts/write-pipeline-status.mjs preclean",
     "scripts/normalize-raw-company-mentions.mjs",
