@@ -147,9 +147,30 @@ export async function GET() {
       );
 
       const listed = await list({ prefix: `${prefix}/` });
+      const diagnosticsBlob = listed.blobs.find((blob) => blob.pathname === pathname);
+
+      if (!diagnosticsBlob) {
+        throw new Error("Diagnostics blob was written but not found in list output");
+      }
+
+      const downloadUrl = (diagnosticsBlob as any).downloadUrl || diagnosticsBlob.url;
+      const response = await fetch(downloadUrl, {
+        headers: process.env.BLOB_READ_WRITE_TOKEN
+          ? {
+              Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`
+            }
+          : undefined
+      });
+
+      if (!response.ok) {
+        throw new Error(`Private blob read failed: ${response.status}`);
+      }
+
+      const body = await response.text();
 
       return {
         wrote: pathname,
+        readBackOk: body.includes("\"ok\": true"),
         blobCount: listed.blobs.length,
         sample: listed.blobs.slice(0, 5).map((blob) => blob.pathname)
       };

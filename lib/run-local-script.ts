@@ -71,7 +71,13 @@ async function pullBlobData() {
     if (!blob) continue;
 
     const downloadUrl = blob.downloadUrl || blob.url;
-    const response = await fetch(downloadUrl);
+    const response = await fetch(downloadUrl, {
+      headers: process.env.BLOB_READ_WRITE_TOKEN
+        ? {
+            Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`
+          }
+        : undefined
+    });
 
     if (!response.ok) {
       throw new Error(`Blob pull failed for ${file}: ${response.status}`);
