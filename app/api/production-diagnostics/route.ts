@@ -128,7 +128,9 @@ export async function GET() {
       await import("@vercel/blob");
       return "import ok";
     })
-  );\n\n  checks.push(
+  );
+
+  checks.push(
     await check("jsonrepair import", async () => {
       await import("jsonrepair");
       return "import ok";
