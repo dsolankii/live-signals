@@ -13,6 +13,7 @@
     "@types/papaparse": "^5.5.2",
     "@vercel/blob": "^2.4.1",
     "dotenv": "^17.4.2",
+    "is-node-process": "^1.2.0",
     "jsonrepair": "^3.14.0",
     "next": "16.2.9",
     "papaparse": "^5.5.3",
