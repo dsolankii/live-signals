@@ -38,7 +38,8 @@ const blobFiles = [
 
 export async function scriptExists(scriptPath: string) {
   try {
-    await access(path.join(process.cwd(), scriptPath), constants.F_OK);
+    const [file] = scriptPath.split(" ").filter(Boolean);
+    await access(path.join(process.cwd(), file), constants.F_OK);
     return true;
   } catch {
     return false;
